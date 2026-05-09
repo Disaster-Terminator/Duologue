@@ -1,101 +1,75 @@
-# ChatGPT Tab Bridge
+# Duologue
 
-在两个已经打开的 ChatGPT 页面之间做消息中继的浏览器扩展。
+<p>
+  <a href="./README.en.md">English</a>
+</p>
 
-> 当前阶段：**可运行原型（prototype）**，更适合实验、联调和工作流探索，不是面向大众用户的成品扩展。
+<p>
+  <img alt="platform Chromium Extension" src="https://img.shields.io/badge/platform-Chromium%20Extension-4285F4">
+  <img alt="manifest MV3" src="https://img.shields.io/badge/manifest-MV3-5f6368">
+  <img alt="language TypeScript" src="https://img.shields.io/badge/language-TypeScript-3178C6">
+  <img alt="runtime Node.js" src="https://img.shields.io/badge/runtime-Node.js-339933">
+  <img alt="package manager pnpm" src="https://img.shields.io/badge/package%20manager-pnpm-F69220">
+  <img alt="browser automation Playwright" src="https://img.shields.io/badge/browser%20automation-Playwright-2EAD33">
+</p>
+
+Duologue 是一个面向 ChatGPT Web 的双会话对话编排扩展。
+
+它可以将两个已经打开的 ChatGPT 页面绑定为一组受控通道，在两端之间读取回复、构造接力消息并推进下一轮对话。它适合用于双模型讨论、代理协作实验、提示词对抗验证和 ChatGPT Web 工作流原型。
 
 ---
 
-## 它能做什么
+## 核心能力
 
-ChatGPT Tab Bridge 允许你把两个已经打开的 ChatGPT 页面分别绑定为 `A` 和 `B`，然后在它们之间自动接力：
-
-- 绑定两个页面为 `A / B`
-- 选择由哪一侧先开始
+- 将两个 ChatGPT 页面绑定为 `A / B`
+- 选择 `A` 或 `B` 作为起始侧
 - 读取一侧最新的 assistant 回复
-- 组合成 relay payload 后发送到另一侧
+- 生成 relay payload 并发送到另一侧
+- 等待目标侧回复后反向继续
 - 支持 `Start / Pause / Resume / Stop / Clear`
-- 支持页内悬浮窗操作，也提供 popup 作为总览和设置入口
+- 提供页内悬浮窗作为主控制面
+- 提供 popup 用于全局状态、设置和调试入口
 
-一句话说，它是一个“让两个 ChatGPT 页面接力对话”的扩展原型。
+一句话：**Duologue 将两个 ChatGPT 页面编排为一组可控的双端对话通道。**
 
 ---
 
-## 适合谁
+## 适合场景
 
-这个仓库更适合下面几类用户：
+Duologue 更适合会主动调试工作流的用户，而不是普通商店扩展用户。
 
-- 想实验“双 ChatGPT 标签页接力”工作流的人
-- 想做 agent-to-agent / tab-to-tab relay 原型的人
-- 能接受手动加载浏览器扩展、自己构建和调试的人
+适合：
 
-如果你想要的是：
+- 双 ChatGPT 会话接力
+- agent-to-agent relay 原型
+- 双模型讨论和互评
+- 提示词对抗与输出验证
+- 基于 ChatGPT Web 的自动化工作流实验
+
+暂不适合：
 
 - 一键安装、即装即用的商店扩展
-- 面向普通用户的稳定成品
 - 长时间无人值守的高可靠自动化
-
-那这个仓库目前还不属于那一类。
-
----
-
-## 当前交互方式
-
-扩展目前有两个操作入口：
-
-### 1) 页内悬浮窗
-
-这是主操作面，适合日常使用。
-
-你可以直接在 ChatGPT 页面里完成：
-
-- 绑定当前页为 `A`
-- 绑定当前页为 `B`
-- 选择 starter（A 或 B）
-- `Start / Pause / Resume / Stop`
-- `Clear`
-- 查看当前 phase、round、next hop、step、last issue
-- 拖动悬浮窗、折叠悬浮窗
-
-### 2) Popup
-
-Popup 更偏向总览、设置和调试，不是主要操作入口。
-
-它负责：
-
-- 查看全局状态
-- 查看当前绑定
-- 切换语言
-- 控制悬浮窗启用、默认展开、位置重置
-- 低频控制和调试信息查看
+- 对稳定性、兼容性有生产级要求的场景
 
 ---
 
-## 支持的页面
+## 页面支持
 
-优先支持这两类 ChatGPT 页面：
+优先支持以下 ChatGPT 页面：
 
-- 普通线程页面  
-  `https://chatgpt.com/c/<conversation-id>`
-- 项目内线程页面  
-  `https://chatgpt.com/g/<project-id>/c/<conversation-id>`
+```text
+https://chatgpt.com/c/<conversation-id>
+https://chatgpt.com/g/<project-id>/c/<conversation-id>
+```
 
-另外，当前实现也支持把**部分尚未形成持久线程 URL 的 ChatGPT 页面**作为 live session 绑定使用。  
-但从实际使用角度，首次尝试时仍建议你：
-
-1. 先把两个页面都正常打开
-2. 最好先让页面各自完成至少一轮正常对话
-3. 再进行绑定和 relay
-
-这样更稳定，也更符合当前原型阶段的预期使用方式。
+当前实现也可以处理部分尚未形成持久线程 URL 的 live session。首次使用时，建议先让两个页面各自完成至少一轮正常对话，再进行绑定和 relay，这样更稳定。
 
 ---
 
 ## 快速开始
 
-### 1. 获取仓库
-
-克隆仓库后安装依赖：
+### 1. 安装依赖
 
 ```bash
 pnpm install
@@ -113,53 +87,71 @@ pnpm run build
 dist/extension
 ```
 
-### 3. 在浏览器中加载
+### 3. 加载到浏览器
 
-当前推荐使用 **Microsoft Edge** 以“已解压扩展”的方式加载。
+当前推荐使用 Microsoft Edge 或其他 Chromium 系浏览器，以“已解压扩展”的方式加载。
 
-步骤：
+以 Edge 为例：
 
 1. 打开 `edge://extensions`
 2. 开启“开发人员模式”
 3. 点击“加载已解压的扩展”
 4. 选择 `dist/extension`
 
-> 说明：这个仓库当前不是商店发布形态，默认使用本地加载方式。
+### 4. 打开并绑定两个 ChatGPT 页面
 
-### 4. 打开两个 ChatGPT 页面
+手动打开两个要参与 relay 的 ChatGPT 页面，然后通过页内悬浮窗分别绑定为：
 
-手动打开两个你要参与 relay 的 ChatGPT 页面。
+- `A`
+- `B`
 
-建议：
+建议两个页面不要指向同一个线程，并确保页面处于可输入、可发送的状态。
 
-- 两个页面都属于 `chatgpt.com`
-- 两个页面不要绑定到同一个线程
-- 页面都处于可正常输入和发送的状态
-
-### 5. 绑定 A / B
-
-在两个页面里分别使用悬浮窗，把它们绑定成：
-
-- 一个是 `A`
-- 另一个是 `B`
-
-### 6. 选择起始侧并启动
+### 5. 启动 relay
 
 选择 `A` 或 `B` 作为 starter，然后点击 `Start`。
 
-扩展会开始：
+Duologue 会按下面的循环推进：
 
 1. 读取起始侧最新 assistant 回复
 2. 生成 relay payload
 3. 发送给目标侧
-4. 等待目标侧回复
-5. 再反向继续
+4. 等待目标侧回复完成
+5. 反向继续下一轮
 
 ---
 
-## 运行时你会看到什么
+## 交互入口
 
-运行时通常会看到这些状态变化：
+### 页内悬浮窗
+
+悬浮窗是主要操作面，适合日常使用。
+
+可以完成：
+
+- 绑定当前页为 `A` 或 `B`
+- 选择 starter
+- 控制 `Start / Pause / Resume / Stop / Clear`
+- 查看 phase、round、next hop、step、last issue
+- 拖动、折叠和恢复悬浮窗
+
+### Popup
+
+Popup 更偏向全局总览、设置和调试。
+
+可以完成：
+
+- 查看全局 relay 状态
+- 查看当前绑定
+- 切换语言
+- 控制悬浮窗启用、默认展开和位置重置
+- 查看低频调试信息
+
+---
+
+## 运行状态
+
+运行时通常会看到这些状态：
 
 - `ready`
 - `running`
@@ -173,116 +165,80 @@ dist/extension
 - `sending A -> B`
 - `waiting B reply`
 
-这类信息的价值在于：  
-它能让你知道当前 relay 卡在了哪一步，而不是只看到“扩展没反应”。
+这些状态用于定位 relay 当前卡在哪一步，避免只看到“扩展没反应”。
 
 ---
 
-## 当前限制
+## 开发命令
 
-这个项目目前有几个必须提前说清楚的边界。
+```bash
+pnpm run build
+pnpm run typecheck
+pnpm test
+```
 
-### 1) 它依赖 ChatGPT Web 页面结构
+常用浏览器联调命令：
 
-这是一个通过内容脚本与 ChatGPT 网页交互的扩展。  
-所以一旦 ChatGPT 前端结构、选择器、发送流程发生变化，扩展行为就可能受影响。
+```bash
+pnpm run test:smoke
+pnpm run test:real-hop
+pnpm run test:semi
+pnpm run test:e2e
+```
 
-### 2) 它不是“完全无痕后台运行”
-
-设计目标是不要求两个被控页面始终保持前台焦点。  
-但扩展在运行时仍会对页面做实际读写操作，例如：
-
-- 读取消息内容
-- 填写输入框
-- 触发发送
-
-因此它更接近：
-
-- **后台自动运行**
-
-而不是：
-
-- **前台完全无变化**
-
-### 3) 长时间运行仍可能受浏览器和页面状态影响
-
-比如：
-
-- MV3 service worker 挂起
-- 标签页被浏览器回收
-- ChatGPT 页面长时间打开后状态陈化
-- 页面正在生成、忙碌或 UI 异常时无法正确接力
-
-如果遇到异常，最先应该尝试的是：
-
-- 刷新相关 ChatGPT 页面
-- 重新绑定
-- 清空终端后重新开始
-
-### 4) 当前更像“面向会折腾用户的原型”
-
-这个仓库目前已经不是概念 demo，但也还不是稳定商用品。  
-它更适合：
-
-- 试验新工作流
-- 做 relay 原型
-- 进行真实页面联调
-
-而不是把它当成“长期稳定的生产力工具”直接依赖。
+认证、CDP、存储状态导出等更细的调试命令可以在 `package.json` 里查看。
 
 ---
 
 ## 权限与隐私
 
-当前扩展权限比较收敛，核心只围绕这些能力工作：
+Duologue 的核心权限围绕浏览器扩展和 ChatGPT 页面交互：
 
 - `storage`
 - `tabs`
 - `https://chatgpt.com/*`
 
-它的本质行为是：  
-在你明确绑定的 ChatGPT 页面里读取消息、写入输入框并触发发送，用来完成 relay。
+它会在你明确绑定的 ChatGPT 页面中读取消息、写入输入框并触发发送。请不要把它用于你不愿意让扩展脚本参与处理的敏感会话。
 
-也就是说，这个扩展天然会接触你绑定页面里的对话内容。  
-请不要把它用于你不愿意让扩展脚本参与处理的敏感会话。
+Duologue 的目标是让 relay 行为可见、可暂停、可停止，而不是隐藏页面上的读写操作。
 
 ---
 
-## 项目状态
+## 当前边界
 
-当前仓库重心是：
+### 依赖 ChatGPT Web 页面结构
 
-- 把“双标签页 relay”主链路做稳
-- 继续减少错误绑定、误判发送成功、错误观察目标页等问题
-- 让悬浮窗成为真正可日常使用的主操作面
-- 把开发文档、测试文档和用户文档彻底分开
+Duologue 通过内容脚本与 ChatGPT 网页交互。ChatGPT 前端结构、选择器、输入框行为或发送流程变化时，扩展可能需要同步适配。
 
-所以这个 README 只保留**用户需要知道的内容**，不再承载测试体系、内部验收策略、认证导出流程或实现细节。
+### 不是完全无痕后台运行
 
----
+Duologue 不要求两个被控页面始终保持前台焦点，但运行时仍会真实读写页面，包括读取消息、填写输入框和触发发送。
 
-## 开发相关内容
+### 长时间运行可能受页面状态影响
 
-开发、测试、认证导出、回归分层、实现细节等内容不再放在首页 README。  
-这些内容应该单独整理到 `docs/` 目录，例如：
+浏览器标签页回收、MV3 service worker 挂起、ChatGPT 页面状态陈化、页面正在生成或 UI 异常，都可能导致 relay 暂停或失败。
 
-- `docs/development.md`
-- `docs/testing.md`
-- `docs/architecture.md`
-- `docs/auth.md`
+遇到异常时，优先尝试：
 
-README 只回答一个问题：
-
-> “作为用户，我该怎么理解、安装和使用这个项目？”
-
-开发与测试入口请看：
-
-- `docs/testing.md`
-- `docs/auth.md`
+1. 刷新相关 ChatGPT 页面
+2. 重新绑定 `A / B`
+3. 清空状态后重新开始
 
 ---
 
-## 免责声明
+## 项目定位
 
-本项目依赖 ChatGPT 网页界面行为，兼容性和稳定性会随着上游页面变化而变化。  
-请把它视为一个正在演进中的实验性工具，而不是稳定承诺明确的最终产品。
+Duologue 是一个正在演进中的 ChatGPT Web 双端 relay 工具。它已经具备可运行的主链路，但仍以实验、联调和工作流探索为主要目标。
+
+当前重点是：
+
+- 提高双页面绑定的可靠性
+- 减少错误观察目标页和误判发送成功
+- 稳定悬浮窗主操作链路
+- 分离用户文档、开发文档和测试文档
+
+---
+
+## License
+
+See `LICENSE`.
