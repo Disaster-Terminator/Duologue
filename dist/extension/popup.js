@@ -79,6 +79,246 @@ var DEFAULT_OVERLAY_SETTINGS = Object.freeze({
   position: null
 });
 
+// core/reason-catalog.ts
+var UNKNOWN_STOP_REASON = "unknown_stop_reason";
+var UNKNOWN_ERROR_REASON = "unknown_error_reason";
+var stopReasonDescriptions = {
+  [STOP_REASONS.USER_STOP]: {
+    title: "\u7528\u6237\u505C\u6B62",
+    severity: "info",
+    summary: "\u6865\u63A5\u7531\u7528\u6237\u624B\u52A8\u505C\u6B62\u3002",
+    nextAction: "\u9700\u8981\u7EE7\u7EED\u65F6\u91CD\u65B0\u5F00\u59CB\u4F1A\u8BDD\u3002"
+  },
+  [STOP_REASONS.STOP_MARKER]: {
+    title: "\u6536\u5230\u505C\u6B62\u6807\u8BB0",
+    severity: "info",
+    summary: "\u76EE\u6807\u56DE\u590D\u5305\u542B\u914D\u7F6E\u7684\u505C\u6B62\u6807\u8BB0\uFF0C\u6865\u63A5\u6309\u89C4\u5219\u7ED3\u675F\u3002",
+    nextAction: "\u68C0\u67E5\u6700\u65B0\u56DE\u590D\uFF1B\u5982\u679C\u8FD8\u8981\u7EE7\u7EED\uFF0C\u8C03\u6574\u4E0A\u4E0B\u6587\u540E\u91CD\u65B0\u542F\u52A8\u3002"
+  },
+  [STOP_REASONS.MAX_ROUNDS]: {
+    title: "\u8FBE\u5230\u8F6E\u6570\u4E0A\u9650",
+    severity: "warning",
+    summary: "\u6865\u63A5\u5DF2\u8FBE\u5230\u5F53\u524D\u8BBE\u7F6E\u7684\u6700\u5927\u8F6E\u6570\u3002",
+    nextAction: "\u5982\u679C\u9700\u8981\u66F4\u591A\u8F6E\u6B21\uFF0C\u63D0\u9AD8\u8F6E\u6570\u9650\u5236\u6216\u624B\u52A8\u7EE7\u7EED\u3002"
+  },
+  [STOP_REASONS.DUPLICATE_OUTPUT]: {
+    title: "\u68C0\u6D4B\u5230\u91CD\u590D\u8F93\u51FA",
+    severity: "warning",
+    summary: "\u8F93\u51FA\u6CA1\u6709\u4EA7\u751F\u6709\u6548\u53D8\u5316\uFF0C\u6865\u63A5\u4E3A\u907F\u514D\u5FAA\u73AF\u800C\u505C\u6B62\u3002",
+    nextAction: "\u68C0\u67E5\u4E24\u4FA7\u63D0\u793A\u662F\u5426\u9677\u5165\u91CD\u590D\uFF0C\u518D\u7528\u65B0\u7684\u4E0A\u4E0B\u6587\u7EE7\u7EED\u3002"
+  },
+  [STOP_REASONS.STARTER_EMPTY]: {
+    title: "\u8D77\u59CB\u56DE\u590D\u4E3A\u7A7A",
+    severity: "warning",
+    summary: "\u542F\u52A8\u65F6\u8D77\u59CB\u4FA7\u6CA1\u6709\u53EF\u8F6C\u53D1\u7684 assistant \u56DE\u590D\u3002",
+    nextAction: "\u5148\u8BA9\u8D77\u59CB\u4FA7\u4EA7\u751F\u4E00\u6761\u56DE\u590D\uFF0C\u6216\u5207\u6362\u8D77\u59CB\u4FA7\u540E\u518D\u542F\u52A8\u3002"
+  },
+  [STOP_REASONS.HOP_TIMEOUT]: {
+    title: "\u5355\u8DF3\u8D85\u65F6",
+    severity: "warning",
+    summary: "\u67D0\u4E00\u8DF3\u5728\u8D85\u65F6\u7A97\u53E3\u5185\u6CA1\u6709\u89C2\u5BDF\u5230\u53EF\u63A5\u53D7\u7684\u56DE\u590D\u5B8C\u6210\u4FE1\u53F7\u3002",
+    nextAction: "\u786E\u8BA4\u76EE\u6807\u9875\u4ECD\u53EF\u54CD\u5E94\uFF1B\u5FC5\u8981\u65F6\u5237\u65B0\u9875\u9762\u3001\u5F00\u542F\u4FDD\u6D3B\u63D2\u4EF6\uFF0C\u6216\u63D0\u9AD8\u8D85\u65F6\u65F6\u95F4\u3002"
+  },
+  [STOP_REASONS.TARGET_HIDDEN_NO_GENERATION]: {
+    title: "\u9690\u85CF\u76EE\u6807\u9875\u672A\u5F00\u59CB\u751F\u6210",
+    severity: "warning",
+    summary: "\u76EE\u6807\u9875\u5904\u4E8E\u9690\u85CF\u6216\u975E\u6D3B\u8DC3\u72B6\u6001\uFF0C\u63D0\u4EA4\u540E\u6CA1\u6709\u89C2\u5BDF\u5230\u751F\u6210\u5F00\u59CB\u3002",
+    nextAction: "\u8BA9\u4E24\u4E2A\u76EE\u6807\u9875\u4FDD\u6301\u6D3B\u8DC3\uFF0C\u6216\u4F7F\u7528\u9875\u9762\u4FDD\u6D3B\u65B9\u6848\u540E\u91CD\u8BD5\u3002"
+  },
+  [STOP_REASONS.REPLY_OBSERVATION_MISSING]: {
+    title: "\u56DE\u590D\u89C2\u5BDF\u7F3A\u5931",
+    severity: "warning",
+    summary: "\u63D0\u4EA4\u540E\u65E0\u6CD5\u8BFB\u53D6\u5230\u76EE\u6807\u9875\u7684 assistant \u56DE\u590D\u4E8B\u5B9E\u3002",
+    nextAction: "\u68C0\u67E5\u76EE\u6807\u7EBF\u7A0B\u662F\u5426\u4ECD\u5728\u6B63\u786E\u9875\u9762\uFF0C\u5237\u65B0\u540E\u91CD\u65B0\u7ED1\u5B9A\u518D\u8BD5\u3002"
+  },
+  [STOP_REASONS.WRONG_TARGET]: {
+    title: "\u76EE\u6807\u6807\u7B7E\u4E0D\u5339\u914D",
+    severity: "warning",
+    summary: "\u5F53\u524D\u89C2\u5BDF\u5230\u7684\u6807\u7B7E\u4E0D\u662F\u672C\u8DF3\u671F\u671B\u7684\u76EE\u6807\u6807\u7B7E\u3002",
+    nextAction: "\u68C0\u67E5 A/B \u7ED1\u5B9A\u548C\u5F53\u524D\u6807\u7B7E\u9875\uFF0C\u5FC5\u8981\u65F6\u6E05\u7A7A\u540E\u91CD\u65B0\u7ED1\u5B9A\u3002"
+  },
+  [STOP_REASONS.STALE_TARGET]: {
+    title: "\u76EE\u6807\u7EBF\u7A0B\u5DF2\u53D8\u66F4",
+    severity: "warning",
+    summary: "\u76EE\u6807\u6807\u7B7E\u4ECD\u53EF\u8BBF\u95EE\uFF0C\u4F46\u5B83\u7684\u7EBF\u7A0B\u8EAB\u4EFD\u5DF2\u7ECF\u4E0D\u662F\u672C\u8DF3\u671F\u671B\u7684\u7EBF\u7A0B\u3002",
+    nextAction: "\u56DE\u5230\u6B63\u786E\u7EBF\u7A0B\u6216\u91CD\u65B0\u7ED1\u5B9A\u5F53\u524D\u7EBF\u7A0B\u3002"
+  },
+  [STOP_REASONS.UNREACHABLE_TARGET]: {
+    title: "\u76EE\u6807\u9875\u4E0D\u53EF\u8FBE",
+    severity: "warning",
+    summary: "\u6269\u5C55\u65E0\u6CD5\u4ECE\u76EE\u6807\u6807\u7B7E\u9875\u8BFB\u53D6\u8FD0\u884C\u65F6\u89C2\u5BDF\u6837\u672C\uFF0C\u5E38\u89C1\u4E8E\u9875\u9762\u52A0\u8F7D\u4E2D\u3001\u5185\u5BB9\u811A\u672C\u5931\u8054\u6216\u6807\u7B7E\u9875\u5F02\u5E38\u3002",
+    nextAction: "\u67E5\u770B runtime log \u4E2D\u7684 tab_status\u3001tab_url\u3001pending_url \u548C observation_error\uFF1B\u5237\u65B0\u5F02\u5E38\u9875\u9762\u540E\u91CD\u8BD5\u3002"
+  },
+  [STOP_REASONS.BINDING_INVALID]: {
+    title: "\u7ED1\u5B9A\u5931\u6548",
+    severity: "warning",
+    summary: "\u4FDD\u5B58\u7684 A/B \u6807\u7B7E\u7ED1\u5B9A\u5DF2\u4E0D\u80FD\u6EE1\u8DB3\u5F53\u524D\u8FD0\u884C\u8981\u6C42\u3002",
+    nextAction: "\u6E05\u7A7A\u72B6\u6001\u5E76\u91CD\u65B0\u7ED1\u5B9A\u4E24\u4E2A ChatGPT \u6807\u7B7E\u9875\u3002"
+  },
+  [STOP_REASONS.STARTER_SETTLE_TIMEOUT]: {
+    title: "\u8D77\u59CB\u9875\u7A33\u5B9A\u8D85\u65F6",
+    severity: "warning",
+    summary: "\u542F\u52A8\u524D\u7B49\u5F85\u8D77\u59CB\u9875\u7A33\u5B9A\u65F6\u8D85\u65F6\u3002",
+    nextAction: "\u7B49\u5F85\u9875\u9762\u52A0\u8F7D\u5B8C\u6210\u540E\u518D\u542F\u52A8\u3002"
+  },
+  [STOP_REASONS.TARGET_SETTLE_TIMEOUT]: {
+    title: "\u76EE\u6807\u9875\u7A33\u5B9A\u8D85\u65F6",
+    severity: "warning",
+    summary: "\u76EE\u6807\u9875\u6CA1\u6709\u5728\u9884\u671F\u65F6\u95F4\u5185\u8FDB\u5165\u53EF\u64CD\u4F5C\u72B6\u6001\u3002",
+    nextAction: "\u5237\u65B0\u76EE\u6807\u9875\uFF0C\u786E\u8BA4\u8F93\u5165\u6846\u53EF\u7528\u540E\u91CD\u8BD5\u3002"
+  },
+  [STOP_REASONS.SUBMISSION_NOT_VERIFIED]: {
+    title: "\u63D0\u4EA4\u672A\u88AB\u9A8C\u8BC1",
+    severity: "warning",
+    summary: "\u6269\u5C55\u89E6\u53D1\u4E86\u63D0\u4EA4\u52A8\u4F5C\uFF0C\u4F46\u6CA1\u6709\u89C2\u5BDF\u5230\u76EE\u6807\u7EBF\u7A0B\u65B0\u589E\u7528\u6237\u6D88\u606F\u6216\u751F\u6210\u5F00\u59CB\u7684\u53EF\u4FE1\u8BC1\u636E\u3002",
+    nextAction: "\u91CD\u70B9\u68C0\u67E5 composer \u662F\u5426\u5F02\u5E38\u3001\u6D88\u606F\u662F\u5426\u88AB\u9875\u9762\u6E05\u7A7A\u3001\u4EE5\u53CA ack debug \u4E2D\u7684 payload/readback \u5B57\u6BB5\u3002"
+  }
+};
+var errorReasonDescriptions = {
+  [ERROR_REASONS.SELECTOR_FAILURE]: {
+    title: "\u9009\u62E9\u5668\u5931\u8D25",
+    severity: "error",
+    summary: "\u9875\u9762\u4E0A\u7F3A\u5C11\u6269\u5C55\u6267\u884C\u64CD\u4F5C\u6240\u9700\u7684\u5143\u7D20\u3002",
+    nextAction: "\u5237\u65B0\u9875\u9762\uFF0C\u7B49 ChatGPT UI \u5B8C\u5168\u52A0\u8F7D\u540E\u91CD\u8BD5\u3002"
+  },
+  [ERROR_REASONS.MESSAGE_SEND_FAILED]: {
+    title: "\u6D88\u606F\u53D1\u9001\u5931\u8D25",
+    severity: "error",
+    summary: "\u6269\u5C55\u672A\u80FD\u628A relay payload \u6210\u529F\u5199\u5165\u5E76\u63D0\u4EA4\u5230\u76EE\u6807\u9875\u3002",
+    nextAction: "\u68C0\u67E5\u8F93\u5165\u6846\u662F\u5426\u53EF\u7F16\u8F91\u3001\u53D1\u9001\u6309\u94AE\u662F\u5426\u53EF\u7528\uFF0C\u4EE5\u53CA\u9875\u9762\u662F\u5426\u5904\u4E8E\u5F02\u5E38\u52A0\u8F7D\u72B6\u6001\u3002"
+  },
+  [ERROR_REASONS.UNSUPPORTED_TAB]: {
+    title: "\u4E0D\u652F\u6301\u7684\u6807\u7B7E\u9875",
+    severity: "error",
+    summary: "\u5F53\u524D\u6807\u7B7E\u9875\u4E0D\u662F\u652F\u6301\u7684 ChatGPT \u7EBF\u7A0B\u6216 live session\u3002",
+    nextAction: "\u6253\u5F00\u652F\u6301\u7684 ChatGPT \u9875\u9762\u540E\u91CD\u65B0\u7ED1\u5B9A\u3002"
+  },
+  [ERROR_REASONS.EMPTY_ASSISTANT_REPLY]: {
+    title: "assistant \u56DE\u590D\u4E3A\u7A7A",
+    severity: "error",
+    summary: "\u6E90\u9875\u9762\u6CA1\u6709\u53EF\u8F6C\u53D1\u7684 assistant \u56DE\u590D\u5185\u5BB9\u3002",
+    nextAction: "\u7B49\u5F85\u6E90\u9875\u9762\u56DE\u590D\u5B8C\u6210\uFF0C\u6216\u6362\u4E00\u4E2A\u5DF2\u6709\u56DE\u590D\u7684\u7EBF\u7A0B\u4F5C\u4E3A\u8D77\u59CB\u4FA7\u3002"
+  },
+  [ERROR_REASONS.INTERNAL_ERROR]: {
+    title: "\u5185\u90E8\u9519\u8BEF",
+    severity: "error",
+    summary: "\u6865\u63A5\u8FD0\u884C\u65F6\u51FA\u73B0\u672A\u9884\u671F\u7684\u5185\u90E8\u5F02\u5E38\u3002",
+    nextAction: "\u4FDD\u7559\u8C03\u8BD5\u65E5\u5FD7\uFF0C\u5237\u65B0\u9875\u9762\u540E\u91CD\u8BD5\uFF1B\u5982\u679C\u590D\u73B0\uFF0C\u628A\u65E5\u5FD7\u4EA4\u7ED9 agent \u5206\u6790\u3002"
+  }
+};
+function normalizeReason(reason) {
+  if (typeof reason !== "string") {
+    return null;
+  }
+  const [baseReason] = reason.split(":", 1);
+  return baseReason?.trim() || null;
+}
+function describeReason(reason, catalog, unknownReason, fallback) {
+  const normalizedReason = normalizeReason(reason);
+  if (!normalizedReason || !catalog[normalizedReason]) {
+    return { ...fallback, reason: unknownReason };
+  }
+  return { ...catalog[normalizedReason], reason: normalizedReason };
+}
+function describeStopReason(reason) {
+  return describeReason(reason, stopReasonDescriptions, UNKNOWN_STOP_REASON, {
+    title: "\u672A\u77E5\u505C\u6B62\u539F\u56E0",
+    severity: "warning",
+    summary: "\u6865\u63A5\u56E0\u4E3A\u672A\u8BC6\u522B\u7684\u505C\u6B62\u539F\u56E0\u7ED3\u675F\u3002",
+    nextAction: "\u67E5\u770B\u6700\u65B0 runtime event \u548C\u8C03\u8BD5\u5FEB\u7167\uFF0C\u518D\u51B3\u5B9A\u662F\u5426\u91CD\u8BD5\u3002"
+  });
+}
+function describeErrorReason(reason) {
+  return describeReason(reason, errorReasonDescriptions, UNKNOWN_ERROR_REASON, {
+    title: "\u672A\u77E5\u9519\u8BEF",
+    severity: "error",
+    summary: "\u6865\u63A5\u9047\u5230\u672A\u8BC6\u522B\u7684\u9519\u8BEF\u539F\u56E0\u3002",
+    nextAction: "\u4FDD\u7559\u65E5\u5FD7\u5E76\u91CD\u8BD5\uFF1B\u5982\u679C\u91CD\u590D\u51FA\u73B0\uFF0C\u6309\u6700\u65B0 runtime event \u7EE7\u7EED\u6392\u67E5\u3002"
+  });
+}
+function describeIssueReason(reason) {
+  const normalizedReason = normalizeReason(reason);
+  return normalizedReason && errorReasonDescriptions[normalizedReason] ? describeErrorReason(normalizedReason) : describeStopReason(normalizedReason);
+}
+
+// core/debug-report.ts
+var SCHEMA_VERSION = 1;
+var MAX_TEXT = 240;
+var MAX_TITLE = 120;
+var MAX_URL = 240;
+var MAX_ERROR = 360;
+var MAX_EVENTS = 25;
+function trunc(value, max) {
+  const text = typeof value === "string" ? value : value == null ? "" : String(value);
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+function bindingSummary(binding) {
+  if (!binding) {
+    return null;
+  }
+  return {
+    tabId: binding.tabId,
+    title: trunc(binding.title, MAX_TITLE),
+    url: trunc(binding.url, MAX_URL)
+  };
+}
+function summarizeEvents(events) {
+  if (!events?.length) {
+    return [];
+  }
+  return events.slice(-MAX_EVENTS).map((event) => ({
+    id: event.id,
+    timestamp: event.timestamp,
+    level: event.level,
+    category: event.category,
+    phaseStep: trunc(event.phaseStep, MAX_TEXT),
+    sourceRole: event.sourceRole,
+    targetRole: event.targetRole,
+    round: event.round,
+    dispatchReadbackSummary: trunc(event.dispatchReadbackSummary, MAX_TEXT),
+    sendTriggerMode: trunc(event.sendTriggerMode, 80),
+    verificationBaseline: trunc(event.verificationBaseline, MAX_TEXT),
+    verificationPollSample: trunc(event.verificationPollSample, MAX_TEXT),
+    verificationVerdict: trunc(event.verificationVerdict, MAX_TEXT)
+  }));
+}
+function buildDebugReport(input) {
+  const reason = input.state.lastError ?? input.state.lastStopReason;
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    generatedAt: input.generatedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
+    currentPhase: input.state.phase,
+    bindings: {
+      A: bindingSummary(input.state.bindings.A),
+      B: bindingSummary(input.state.bindings.B)
+    },
+    settings: {
+      maxRounds: input.state.settings.maxRounds,
+      maxRoundsEnabled: input.state.settings.maxRoundsEnabled,
+      stopMarker: trunc(input.state.settings.stopMarker, MAX_TEXT),
+      hopTimeoutMs: input.state.settings.hopTimeoutMs,
+      pollIntervalMs: input.state.settings.pollIntervalMs
+    },
+    overlaySettings: input.overlaySettings ? {
+      enabled: input.overlaySettings.enabled,
+      ambientEnabled: input.overlaySettings.ambientEnabled,
+      collapsed: input.overlaySettings.collapsed
+    } : null,
+    activeHop: input.state.activeHop ? {
+      sourceRole: input.state.activeHop.sourceRole,
+      targetRole: input.state.activeHop.targetRole,
+      targetTabId: input.state.activeHop.targetTabId,
+      round: input.state.activeHop.round,
+      stage: trunc(input.state.activeHop.stage, 80),
+      hopId: input.state.activeHop.hopId
+    } : null,
+    lastStopReason: input.state.lastStopReason,
+    lastError: trunc(input.state.lastError, MAX_ERROR) || null,
+    issueAdvice: describeIssueReason(reason),
+    recentRuntimeEvents: summarizeEvents(input.recentRuntimeEvents)
+  };
+}
+
 // copy/bridge-copy.ts
 var DEFAULT_UI_LOCALE = "zh-CN";
 var zhCN = {
@@ -794,6 +1034,19 @@ function buildDebugSnapshot(model, ackDebug, ackTarget, runtimeEvents = []) {
       );
     }
   }
+  lines.push(
+    "",
+    "Structured Debug Report:",
+    JSON.stringify(
+      buildDebugReport({
+        state,
+        overlaySettings: model.overlaySettings,
+        recentRuntimeEvents: runtimeEvents
+      }),
+      null,
+      2
+    )
+  );
   return lines.join("\n");
 }
 function resolveAckDebugTarget(model, fallbackTabId) {

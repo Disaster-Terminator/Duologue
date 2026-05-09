@@ -148,6 +148,9 @@ type TabLifecycleFacts = {
   status: string | null;
   windowId: number | null;
   lastAccessed: number | null;
+  url: string | null;
+  pendingUrl: string | null;
+  title: string | null;
   error: string | null;
 };
 
@@ -2221,6 +2224,9 @@ async function readTabLifecycleFacts(tabId: number): Promise<TabLifecycleFacts> 
       status: typeof tab.status === "string" ? tab.status : null,
       windowId: typeof tab.windowId === "number" ? tab.windowId : null,
       lastAccessed: typeof tab.lastAccessed === "number" ? tab.lastAccessed : null,
+      url: typeof tab.url === "string" ? tab.url : null,
+      pendingUrl: typeof tab.pendingUrl === "string" ? tab.pendingUrl : null,
+      title: typeof tab.title === "string" ? tab.title : null,
       error: null
     };
   } catch (error) {
@@ -2236,6 +2242,9 @@ async function readTabLifecycleFacts(tabId: number): Promise<TabLifecycleFacts> 
       status: null,
       windowId: null,
       lastAccessed: null,
+      url: null,
+      pendingUrl: null,
+      title: null,
       error: getErrorMessage(error)
     };
   }
@@ -2296,7 +2305,11 @@ export async function waitForSettledReply({
         dispatchReadbackSummary: "reply_wait",
         sendTriggerMode: "observation",
         verificationBaseline: `baseline_assistant:${baselineHash ?? "null"}`,
-        verificationPollSample: `classification:${observation.classification}|elapsed_ms:${elapsedMs}|${formatTabLifecycleFacts(tabLifecycle)}`,
+        verificationPollSample: formatObservationFailurePollSample({
+          observation,
+          elapsedMs,
+          tabLifecycle
+        }),
         verificationVerdict: observation.classification
       });
       return {
@@ -2507,6 +2520,26 @@ function formatReplyPollSample({
   ].join("|");
 }
 
+export function formatObservationFailurePollSample({
+  observation,
+  elapsedMs,
+  tabLifecycle
+}: {
+  observation: Exclude<ClassifiedTargetObservation, { classification: "correct_target" }>;
+  elapsedMs: number;
+  tabLifecycle: TabLifecycleFacts;
+}): string {
+  return [
+    `classification:${observation.classification}`,
+    `elapsed_ms:${elapsedMs}`,
+    `requested_tab:${observation.requestedTabId}`,
+    `canonical_tab:${observation.canonicalTargetTabId}`,
+    `observed_url:${observation.observedNormalizedUrl ?? "null"}`,
+    `observation_error:${"error" in observation ? sanitizePollValue(observation.error) : "none"}`,
+    formatTabLifecycleFacts(tabLifecycle)
+  ].join("|");
+}
+
 function formatTabLifecycleFacts(tab: TabLifecycleFacts): string {
   return [
     `tab_available:${tab.available}`,
@@ -2520,8 +2553,15 @@ function formatTabLifecycleFacts(tab: TabLifecycleFacts): string {
     `tab_pinned:${tab.pinned ?? "unknown"}`,
     `tab_window:${tab.windowId ?? "unknown"}`,
     `tab_last_accessed:${tab.lastAccessed ?? "unknown"}`,
-    `tab_error:${tab.error ?? "none"}`
+    `tab_url:${sanitizePollValue(tab.url ?? "unknown")}`,
+    `tab_pending_url:${sanitizePollValue(tab.pendingUrl ?? "unknown")}`,
+    `tab_title:${sanitizePollValue(tab.title ?? "unknown")}`,
+    `tab_error:${sanitizePollValue(tab.error ?? "none")}`
   ].join("|");
+}
+
+function sanitizePollValue(value: string): string {
+  return value.replace(/[|\r\n]+/g, " ").slice(0, 240);
 }
 
 async function getPopupModel(activeTabId: number | null): Promise<PopupModel> {

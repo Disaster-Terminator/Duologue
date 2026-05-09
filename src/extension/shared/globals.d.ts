@@ -110,6 +110,7 @@ export interface ChromeTab {
   id?: number;
   title?: string;
   url?: string;
+  pendingUrl?: string;
   active?: boolean;
   audible?: boolean;
   autoDiscardable?: boolean;

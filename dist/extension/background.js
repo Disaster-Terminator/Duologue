@@ -2758,6 +2758,9 @@ async function readTabLifecycleFacts(tabId) {
       status: typeof tab.status === "string" ? tab.status : null,
       windowId: typeof tab.windowId === "number" ? tab.windowId : null,
       lastAccessed: typeof tab.lastAccessed === "number" ? tab.lastAccessed : null,
+      url: typeof tab.url === "string" ? tab.url : null,
+      pendingUrl: typeof tab.pendingUrl === "string" ? tab.pendingUrl : null,
+      title: typeof tab.title === "string" ? tab.title : null,
       error: null
     };
   } catch (error) {
@@ -2773,6 +2776,9 @@ async function readTabLifecycleFacts(tabId) {
       status: null,
       windowId: null,
       lastAccessed: null,
+      url: null,
+      pendingUrl: null,
+      title: null,
       error: getErrorMessage(error)
     };
   }
@@ -2828,7 +2834,11 @@ async function waitForSettledReply({
         dispatchReadbackSummary: "reply_wait",
         sendTriggerMode: "observation",
         verificationBaseline: `baseline_assistant:${baselineHash ?? "null"}`,
-        verificationPollSample: `classification:${observation.classification}|elapsed_ms:${elapsedMs}|${formatTabLifecycleFacts(tabLifecycle)}`,
+        verificationPollSample: formatObservationFailurePollSample({
+          observation,
+          elapsedMs,
+          tabLifecycle
+        }),
         verificationVerdict: observation.classification
       });
       return {
@@ -3003,6 +3013,21 @@ function formatReplyPollSample({
     `preview:${preview || "null"}`
   ].join("|");
 }
+function formatObservationFailurePollSample({
+  observation,
+  elapsedMs,
+  tabLifecycle
+}) {
+  return [
+    `classification:${observation.classification}`,
+    `elapsed_ms:${elapsedMs}`,
+    `requested_tab:${observation.requestedTabId}`,
+    `canonical_tab:${observation.canonicalTargetTabId}`,
+    `observed_url:${observation.observedNormalizedUrl ?? "null"}`,
+    `observation_error:${"error" in observation ? sanitizePollValue(observation.error) : "none"}`,
+    formatTabLifecycleFacts(tabLifecycle)
+  ].join("|");
+}
 function formatTabLifecycleFacts(tab) {
   return [
     `tab_available:${tab.available}`,
@@ -3016,8 +3041,14 @@ function formatTabLifecycleFacts(tab) {
     `tab_pinned:${tab.pinned ?? "unknown"}`,
     `tab_window:${tab.windowId ?? "unknown"}`,
     `tab_last_accessed:${tab.lastAccessed ?? "unknown"}`,
-    `tab_error:${tab.error ?? "none"}`
+    `tab_url:${sanitizePollValue(tab.url ?? "unknown")}`,
+    `tab_pending_url:${sanitizePollValue(tab.pendingUrl ?? "unknown")}`,
+    `tab_title:${sanitizePollValue(tab.title ?? "unknown")}`,
+    `tab_error:${sanitizePollValue(tab.error ?? "none")}`
   ].join("|");
+}
+function sanitizePollValue(value) {
+  return value.replace(/[|\r\n]+/g, " ").slice(0, 240);
 }
 async function getPopupModel(activeTabId) {
   const state = await getState();
@@ -3196,6 +3227,7 @@ function structuredCloneSafe(value) {
 }
 export {
   classifyTargetObservation,
+  formatObservationFailurePollSample,
   formatPendingBoundaryStep,
   getHopExecutionPlan,
   runRelayLoop,

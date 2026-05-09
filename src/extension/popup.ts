@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from "./core/constants.ts";
+import { buildDebugReport } from "./core/debug-report.ts";
 import { getPopupCopy, applyStaticCopy, formatPhase, type UiLocale, type PopupCopy } from "./copy/bridge-copy.ts";
 import { readUiLocale, writeUiLocale } from "./ui/preferences.ts";
 import type {
@@ -619,6 +620,20 @@ function buildDebugSnapshot(
       );
     }
   }
+
+  lines.push(
+    "",
+    "Structured Debug Report:",
+    JSON.stringify(
+      buildDebugReport({
+        state,
+        overlaySettings: model.overlaySettings,
+        recentRuntimeEvents: runtimeEvents
+      }),
+      null,
+      2
+    )
+  );
 
   return lines.join("\n");
 }

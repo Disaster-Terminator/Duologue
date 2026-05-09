@@ -82,6 +82,7 @@ globalThis.chrome = chromeEnvironment.chrome;
 const {
   formatPendingBoundaryStep,
   classifyTargetObservation,
+  formatObservationFailurePollSample,
   getHopExecutionPlan,
   runRelayLoop,
   setActiveLoopTokenForTest,
@@ -308,6 +309,49 @@ test("classifyTargetObservation distinguishes correct, wrong, stale, and unreach
     }
   });
   assert.equal(unreachable.classification, "unreachable_target");
+});
+
+test("formatObservationFailurePollSample preserves target diagnostics for unreachable loading pages", () => {
+  const observation = classifyTargetObservation({
+    requestedTabId: 2,
+    canonicalTargetTabId: 2,
+    expectedTargetIdentity: { normalizedUrl: "https://chatgpt.com/c/thread-b" },
+    observation: {
+      ok: false,
+      error: "receiving_end_does_not_exist"
+    }
+  });
+
+  const sample = formatObservationFailurePollSample({
+    observation,
+    elapsedMs: 16534,
+    tabLifecycle: {
+      available: true,
+      active: true,
+      audible: false,
+      autoDiscardable: true,
+      discarded: false,
+      frozen: false,
+      highlighted: true,
+      pinned: false,
+      status: "loading",
+      windowId: 1019052088,
+      lastAccessed: 1778327919113.172,
+      url: "https://chatgpt.com/c/thread-b",
+      pendingUrl: "https://chatgpt.com/c/thread-b",
+      title: "ChatGPT",
+      error: null
+    }
+  });
+
+  assert.match(sample, /classification:unreachable_target/);
+  assert.match(sample, /requested_tab:2/);
+  assert.match(sample, /canonical_tab:2/);
+  assert.match(sample, /observed_url:null/);
+  assert.match(sample, /observation_error:receiving_end_does_not_exist/);
+  assert.match(sample, /tab_status:loading/);
+  assert.match(sample, /tab_url:https:\/\/chatgpt\.com\/c\/thread-b/);
+  assert.match(sample, /tab_pending_url:https:\/\/chatgpt\.com\/c\/thread-b/);
 });
 
 test("runRelayLoop resumes a verifying hop on the canonical target without re-sending", async () => {
