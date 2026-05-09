@@ -83,6 +83,7 @@ const {
   formatPendingBoundaryStep,
   classifyTargetObservation,
   formatObservationFailurePollSample,
+  buildOverlaySnapshot,
   getHopExecutionPlan,
   runRelayLoop,
   setActiveLoopTokenForTest,
@@ -352,6 +353,30 @@ test("formatObservationFailurePollSample preserves target diagnostics for unreac
   assert.match(sample, /tab_status:loading/);
   assert.match(sample, /tab_url:https:\/\/chatgpt\.com\/c\/thread-b/);
   assert.match(sample, /tab_pending_url:https:\/\/chatgpt\.com\/c\/thread-b/);
+});
+
+test("buildOverlaySnapshot does not request source tab activity for overlay refresh", async () => {
+  chromeEnvironment.reset();
+  const state = createInitialState();
+  state.phase = PHASES.READY;
+  state.bindings.A = createBinding("A", 101, "source-thread");
+  state.bindings.B = createBinding("B", 202, "target-thread");
+  state.nextHopSource = "A";
+
+  chromeEnvironment.setSendMessageHandler(async () => {
+    throw new Error("overlay_snapshot_should_not_query_tabs");
+  });
+
+  const snapshot = await buildOverlaySnapshot(state, 101, {
+    enabled: true,
+    ambientEnabled: false,
+    collapsed: false,
+    position: null
+  });
+
+  assert.equal(snapshot.assignedRole, "A");
+  assert.equal(snapshot.nextHop, "A -> B");
+  assert.deepEqual(chromeEnvironment.callLog, []);
 });
 
 test("runRelayLoop resumes a verifying hop on the canonical target without re-sending", async () => {

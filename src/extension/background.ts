@@ -2678,23 +2678,12 @@ function postOverlayStateToPorts(
   }
 }
 
-async function buildOverlaySnapshot(
+export async function buildOverlaySnapshot(
   state: RuntimeState,
   tabId: number | null,
   overlaySettings: OverlaySettings
 ): Promise<OverlayModel> {
-  const sourceRole = state.activeHop?.sourceRole ?? state.nextHopOverride ?? state.nextHopSource;
-  const sourceBinding = state.bindings[sourceRole];
-  let sourceThreadActivity = null;
-  
-  if (sourceBinding) {
-    const activity = await requestThreadActivity(sourceBinding.tabId);
-    if (activity.ok) {
-      sourceThreadActivity = activity.result;
-    }
-  }
-
-  const readiness = computeReadiness(state, sourceThreadActivity);
+  const readiness = computeReadiness(state, null);
 
   return {
     phase: state.phase,

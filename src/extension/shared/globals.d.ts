@@ -76,6 +76,7 @@ export interface ChromePort {
   sender?: ChromeMessageSender;
   onDisconnect: ChromeEvent<() => void>;
   onMessage: ChromeEvent<(message: unknown) => void>;
+  disconnect?: () => void;
   postMessage(message: unknown): void;
 }
 

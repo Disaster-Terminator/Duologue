@@ -16,6 +16,13 @@ import {
   triggerComposerSend
 } from "./content-helpers.ts";
 import { APP_STATE_KEY, MESSAGE_TYPES, OVERLAY_SETTINGS_KEY } from "./core/constants.ts";
+import {
+  classifyOverlayRefreshError,
+  formatOverlayRefreshFailure,
+  shouldDisableOverlayRefreshAfterFailure,
+  shouldStartOverlayRefresh,
+  type OverlayRefreshFailureKind
+} from "./core/overlay-refresh.ts";
 import { getOverlayCopy, formatPhase, formatRoleStatus, formatStarter, formatStepLine, formatIssueLine, type UiLocale } from "./copy/bridge-copy.ts";
 import { readUiLocale, observeUiLocale } from "./ui/preferences.ts";
 import type {
@@ -34,6 +41,9 @@ import type {
 import type { ChromePort } from "./shared/globals";
 
 const overlay = createOverlay();
+let overlayRefreshDisabled = false;
+let overlayRefreshInFlight = false;
+let overlayRefreshLastFailure: OverlayRefreshFailureKind | null = null;
 let keepAlivePort: ChromePort | null = connectKeepAlivePort();
 let refreshTimerId: number | null = null;
 const isChatGptPage = window.location.hostname === "chatgpt.com";
@@ -156,7 +166,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 bindOverlayEvents();
 renderOverlay();
-void refreshOverlayModel();
+void requestOverlayModelRefresh();
 startOverlayRefreshLoop();
 observeOverlayAttachment();
 observeRuntimeStorageChanges();
@@ -194,8 +204,13 @@ function connectKeepAlivePort(): ChromePort {
   port.onDisconnect.addListener(() => {
     clearInterval(intervalId);
     keepAlivePort = null;
+    if (overlayRefreshDisabled) {
+      return;
+    }
     setTimeout(() => {
-      keepAlivePort = connectKeepAlivePort();
+      if (!overlayRefreshDisabled) {
+        keepAlivePort = connectKeepAlivePort();
+      }
     }, 1000);
   });
 
@@ -205,15 +220,15 @@ function connectKeepAlivePort(): ChromePort {
 function startOverlayRefreshLoop(): void {
   window.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
-      void refreshOverlayModel();
+      void requestOverlayModelRefresh();
     }
   });
   window.addEventListener("focus", () => {
-    void refreshOverlayModel();
+    void requestOverlayModelRefresh();
   });
 
   refreshTimerId = window.setInterval(() => {
-    void refreshOverlayModel();
+    void requestOverlayModelRefresh();
   }, isChatGptPage ? 1500 : 2500);
 }
 
@@ -223,7 +238,7 @@ function observeRuntimeStorageChanges(): void {
     const settingsChanged = areaName === "local" && OVERLAY_SETTINGS_KEY in changes;
 
     if (stateChanged || settingsChanged) {
-      void refreshOverlayModel();
+      void requestOverlayModelRefresh();
     }
   });
 }
@@ -300,7 +315,23 @@ async function dispatchOverlayAction(message: RuntimeMessage): Promise<void> {
   try {
     const response = await chrome.runtime.sendMessage(message);
   } finally {
+    await requestOverlayModelRefresh();
+  }
+}
+
+async function requestOverlayModelRefresh(): Promise<void> {
+  if (!shouldStartOverlayRefresh({
+    disabled: overlayRefreshDisabled,
+    inFlight: overlayRefreshInFlight
+  })) {
+    return;
+  }
+
+  overlayRefreshInFlight = true;
+  try {
     await refreshOverlayModel();
+  } finally {
+    overlayRefreshInFlight = false;
   }
 }
 
@@ -310,8 +341,26 @@ async function refreshOverlayModel(): Promise<void> {
       type: MESSAGE_TYPES.GET_OVERLAY_MODEL
     });
 
-    const model = response.ok ? response.result : null;
-    if (!model) {
+    if (!response) {
+      throw new Error("empty_overlay_model_response");
+    }
+
+    if (response.ok !== true) {
+      throw new Error(
+        "error" in response && typeof response.error === "string"
+          ? response.error
+          : "overlay_model_response_not_ok"
+      );
+    }
+
+    const model = response.result;
+
+    if (overlayRefreshLastFailure !== null) {
+      overlayRefreshLastFailure = null;
+      overlay.dataset.refreshFailure = "";
+    }
+
+    if (overlayRefreshDisabled) {
       return;
     }
 
@@ -321,8 +370,45 @@ async function refreshOverlayModel(): Promise<void> {
     };
     renderOverlay();
   } catch (error) {
-    console.warn("[bridge] overlay model refresh failed", error);
+    const failureKind = classifyOverlayRefreshError(error);
+    overlayRefreshLastFailure = failureKind;
+    overlay.dataset.refreshFailure = failureKind;
+    console.warn("[bridge] overlay model refresh failed", failureKind, error);
+
+    if (shouldDisableOverlayRefreshAfterFailure(error)) {
+      disableOverlayRefresh(failureKind);
+    }
   }
+}
+
+function disableOverlayRefresh(reason: OverlayRefreshFailureKind): void {
+  overlayRefreshDisabled = true;
+  overlay.dataset.refreshDisabled = reason;
+
+  if (refreshTimerId !== null) {
+    window.clearInterval(refreshTimerId);
+    refreshTimerId = null;
+  }
+
+  try {
+    keepAlivePort?.disconnect?.();
+  } catch {
+    // Runtime invalidation can also invalidate the port object.
+  }
+
+  keepAlivePort = null;
+  showOverlayRefreshFailure(reason);
+}
+
+function showOverlayRefreshFailure(reason: OverlayRefreshFailureKind): void {
+  const issueRow = overlay.querySelector<HTMLElement>("[data-slot='issue-row']");
+  const issue = overlay.querySelector<HTMLElement>("[data-slot='issue']");
+  if (!issueRow || !issue) {
+    return;
+  }
+
+  issueRow.hidden = false;
+  issue.textContent = formatOverlayRefreshFailure(reason, overlayLocale);
 }
 
 function createOverlay(): HTMLElement {
