@@ -177,6 +177,14 @@ pnpm run typecheck
 pnpm test
 ```
 
+本地调试运行时行为时，先启动日志服务器：
+
+```bash
+pnpm run debug:log-server
+```
+
+默认监听 `http://127.0.0.1:17761/events`，健康检查为 `http://127.0.0.1:17761/health`，日志写入 `tmp/bridge-debug/events.jsonl`。
+
 常用浏览器联调命令：
 
 ```bash
@@ -187,6 +195,7 @@ pnpm run test:e2e
 ```
 
 认证、CDP、存储状态导出等更细的调试命令可以在 `package.json` 里查看。
+更多开发说明见 `docs/development.md`，测试分层见 `docs/testing.md`。
 
 ---
 
