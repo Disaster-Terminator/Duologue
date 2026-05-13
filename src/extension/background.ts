@@ -19,6 +19,7 @@ import {
 } from "./core/constants.ts";
 import {
   createInitialState,
+  getObservableRuntimeStateEventTypes,
   reduceState,
   type RuntimeStateEvent
 } from "./core/state-machine.ts";
@@ -744,19 +745,7 @@ function addStateTransitionEvent(
   previousState: RuntimeState,
   nextState: RuntimeState
 ): void {
-  const observableEvents = new Set<RuntimeStateEvent["type"]>([
-    "set_starter",
-    "set_next_hop_override",
-    "start",
-    "pause",
-    "resume",
-    "stop",
-    "hop_completed",
-    "stop_condition",
-    "selector_failure",
-    "runtime_error",
-    "set_runtime_settings"
-  ]);
+  const observableEvents = getObservableRuntimeStateEventTypes();
 
   if (!observableEvents.has(event.type)) {
     return;

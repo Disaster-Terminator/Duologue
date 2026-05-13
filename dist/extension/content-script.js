@@ -183,17 +183,23 @@ function calculateTextOverlap(textA, textB) {
   return matchCount / Math.max(wordsA.length, wordsB.length);
 }
 function containsBridgeEnvelopePrefix(text) {
-  return text.includes("[BRIDGE_CONTEXT]") || text.includes("[\u6765\u81EA");
+  return text.includes("[BRIDGE_META") || text.includes("[BRIDGE_CONTEXT]");
 }
 function extractHopMarker(text) {
-  const match = normalizeText(text).match(/(?:^|\n)hop:\s*([^\s\n]+)/i);
-  return match?.[1] ?? null;
+  const normalized = normalizeText(text);
+  const metaMatch = normalized.match(/\[BRIDGE_META[^\]]*\bhop=([^\s\]]+)/i);
+  if (metaMatch?.[1]) {
+    return metaMatch[1];
+  }
+  const legacyMatch = normalized.match(/(?:^|\n)hop:\s*([^\s\n]+)/i);
+  return legacyMatch?.[1] ?? null;
 }
 function showsPayloadAdoption(latestText, expectedText) {
   const hopMarker = extractHopMarker(expectedText);
   if (hopMarker) {
     const latestLower = normalizeText(latestText).toLowerCase();
-    return latestLower.includes(`[bridge_context]`) && latestLower.includes(`hop: ${hopMarker}`.toLowerCase());
+    const markerLower = hopMarker.toLowerCase();
+    return latestLower.includes(`[bridge_meta hop=${markerLower}]`) || latestLower.includes("[bridge_context]") && latestLower.includes(`hop: ${markerLower}`);
   }
   if (containsBridgeEnvelopePrefix(latestText)) {
     return true;

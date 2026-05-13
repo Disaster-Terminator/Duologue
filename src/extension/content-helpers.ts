@@ -297,12 +297,18 @@ export function calculateTextOverlap(textA: string, textB: string): number {
  * This is a stable indicator that the message was relayed by our bridge.
  */
 function containsBridgeEnvelopePrefix(text: string): boolean {
-  return text.includes("[BRIDGE_CONTEXT]") || text.includes("[来自");
+  return text.includes("[BRIDGE_META") || text.includes("[BRIDGE_CONTEXT]");
 }
 
 function extractHopMarker(text: string): string | null {
-  const match = normalizeText(text).match(/(?:^|\n)hop:\s*([^\s\n]+)/i);
-  return match?.[1] ?? null;
+  const normalized = normalizeText(text);
+  const metaMatch = normalized.match(/\[BRIDGE_META[^\]]*\bhop=([^\s\]]+)/i);
+  if (metaMatch?.[1]) {
+    return metaMatch[1];
+  }
+
+  const legacyMatch = normalized.match(/(?:^|\n)hop:\s*([^\s\n]+)/i);
+  return legacyMatch?.[1] ?? null;
 }
 
 /**
@@ -313,7 +319,14 @@ function showsPayloadAdoption(latestText: string, expectedText: string): boolean
   const hopMarker = extractHopMarker(expectedText);
   if (hopMarker) {
     const latestLower = normalizeText(latestText).toLowerCase();
-    return latestLower.includes(`[bridge_context]`) && latestLower.includes(`hop: ${hopMarker}`.toLowerCase());
+    const markerLower = hopMarker.toLowerCase();
+    return (
+      latestLower.includes(`[bridge_meta hop=${markerLower}]`) ||
+      (
+        latestLower.includes("[bridge_context]") &&
+        latestLower.includes(`hop: ${markerLower}`)
+      )
+    );
   }
 
   // Check for bridge envelope prefix

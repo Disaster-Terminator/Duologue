@@ -185,6 +185,54 @@ test("REGRESSION: checkAckSignals acks user_message_added on bridge envelope pre
   // After fix, if latest user text contains [BRIDGE_CONTEXT], it should be accepted
 });
 
+test("checkAckSignals acks user_message_added on BRIDGE_META hop marker", async () => {
+  const hopId = "s1-r1-hop-meta";
+  const expectedText = [
+    "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron",
+    "",
+    `[BRIDGE_META hop=${hopId}]`,
+    "",
+    "[BRIDGE_INSTRUCTION]",
+    "Continue.",
+    "",
+    "[BRIDGE_STATE] CONTINUE"
+  ].join("\n");
+  const latestUserText = `[BRIDGE_META hop=${hopId}]`;
+  const mockDoc = {
+    querySelector: () => null,
+    querySelectorAll: (selector) => {
+      if (selector.includes('data-message-author-role="user"')) {
+        return [
+          {
+            textContent: latestUserText
+          }
+        ];
+      }
+      return [];
+    }
+  };
+  const originalGlobal = globalThis.document;
+  globalThis.document = mockDoc;
+
+  try {
+    const result = checkAckSignals({
+      baselineUserHash: "baseline-user",
+      baselineGenerating: false,
+      composer: createMockComposer(""),
+      expectedHash: "different-from-real-hash",
+      expectedText
+    });
+
+    assert.deepEqual(result, {
+      ok: true,
+      signal: "user_message_added",
+      evidence: "strong_with_auxiliary"
+    });
+  } finally {
+    globalThis.document = originalGlobal;
+  }
+});
+
 // TEST 6: user_message_added fails when latest user text changes but is unrelated
 test("REGRESSION: checkAckSignals rejects unrelated user message hash changes", async () => {
   // Already tested in existing test, but should verify it fails properly

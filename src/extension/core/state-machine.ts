@@ -117,6 +117,24 @@ export type RuntimeStateEvent =
   | SetRuntimeActivityEvent
   | SetExecutionHopEvent;
 
+export function getObservableRuntimeStateEventTypes(): Set<RuntimeStateEvent["type"]> {
+  return new Set<RuntimeStateEvent["type"]>([
+    "set_starter",
+    "set_next_hop_override",
+    "start",
+    "pause",
+    "resume",
+    "stop",
+    "hop_completed",
+    "stop_condition",
+    "selector_failure",
+    "runtime_error",
+    "set_runtime_settings",
+    "set_runtime_activity",
+    "set_execution_hop"
+  ]);
+}
+
 export function createInitialState(): RuntimeState {
   return {
     phase: PHASES.IDLE,

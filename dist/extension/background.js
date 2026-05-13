@@ -151,6 +151,23 @@ function otherRole(role) {
 }
 
 // core/state-machine.ts
+function getObservableRuntimeStateEventTypes() {
+  return /* @__PURE__ */ new Set([
+    "set_starter",
+    "set_next_hop_override",
+    "start",
+    "pause",
+    "resume",
+    "stop",
+    "hop_completed",
+    "stop_condition",
+    "selector_failure",
+    "runtime_error",
+    "set_runtime_settings",
+    "set_runtime_activity",
+    "set_execution_hop"
+  ]);
+}
 function createInitialState() {
   return {
     phase: PHASES.IDLE,
@@ -1536,19 +1553,7 @@ async function updateState(event) {
   return persistState(next, current);
 }
 function addStateTransitionEvent(event, previousState, nextState) {
-  const observableEvents = /* @__PURE__ */ new Set([
-    "set_starter",
-    "set_next_hop_override",
-    "start",
-    "pause",
-    "resume",
-    "stop",
-    "hop_completed",
-    "stop_condition",
-    "selector_failure",
-    "runtime_error",
-    "set_runtime_settings"
-  ]);
+  const observableEvents = getObservableRuntimeStateEventTypes();
   if (!observableEvents.has(event.type)) {
     return;
   }

@@ -8,6 +8,7 @@ const { ERROR_REASONS, PHASES, STOP_REASONS } = await importExtensionModule("cor
 const {
   canWriteOverride,
   createInitialState,
+  getObservableRuntimeStateEventTypes,
   reduceState
 } = await importExtensionModule("core/state-machine");
 
@@ -613,4 +614,11 @@ test("runtime activity is updated while running and on pause", () => {
 
   state = reduceState(state, { type: "pause" });
   assert.equal(state.runtimeActivity.step, "paused");
+});
+
+test("runtime activity and execution hop transitions are observable events", () => {
+  const observableTypes = getObservableRuntimeStateEventTypes();
+
+  assert.equal(observableTypes.has("set_runtime_activity"), true);
+  assert.equal(observableTypes.has("set_execution_hop"), true);
 });
