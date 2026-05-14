@@ -4,7 +4,7 @@
 
 ## 运行时版本
 
-开发和 CI 使用 Node.js 24。`package.json` 通过 `engines.node >=24.0.0` 声明下限；GitHub Actions 同时设置 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`，避免 action runtime 继续落在即将弃用的 Node.js 20。
+开发和 CI 使用 Node.js 24 与 pnpm 10.33.2。`package.json` 通过 `engines.node >=24.0.0` 声明 Node 下限，并通过 `packageManager` 固定 pnpm 版本；GitHub Actions 使用 Node 24 运行项目命令，并使用支持 Node 24 runtime 的 action major。
 
 ## 核心命令
 
