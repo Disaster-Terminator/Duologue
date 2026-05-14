@@ -2,6 +2,10 @@
 
 本项目是一个 Microsoft Edge 扩展，用来在两个 ChatGPT 标签页之间中继消息。开发时编辑 `src/extension/` 下的源码；提交的扩展产物由构建流程生成到 `dist/extension/`。
 
+## 运行时版本
+
+开发和 CI 使用 Node.js 24。`package.json` 通过 `engines.node >=24.0.0` 声明下限；GitHub Actions 同时设置 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`，避免 action runtime 继续落在即将弃用的 Node.js 20。
+
 ## 核心命令
 
 ```bash

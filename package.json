@@ -31,6 +31,9 @@
     "debug:log-server": "node scripts/debug-log-server.mjs",
     "dev:install-hooks": "node scripts/install-git-hooks.mjs"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "dependencies": {
     "@openai/codex": "^0.118.0",
     "oh-my-codex": "^0.11.12"
