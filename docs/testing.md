@@ -30,6 +30,21 @@ CHATGPT_CDP_ENDPOINT=http://127.0.0.1:9333 pnpm run test:cdp-smoke
 
 This must satisfy the same minimal contract as `test:smoke` before any business-regression testing resumes.
 
+## 抗风控实验 smoke
+
+当真实 Chrome / Edge profile 仍触发 ChatGPT / Cloudflare 风控时，使用 CloakBrowser 通道：
+
+```bash
+pnpm run auth:bootstrap-cloak
+pnpm run test:cloak-smoke
+```
+
+这个通道使用 CloakBrowser 的 Playwright wrapper，而不是把它的 `chrome.exe` 传给 `BROWSER_EXECUTABLE_PATH`。它使用独立持久 profile：优先读取 `CLOAKBROWSER_PROFILE_DIR`，否则落到 `~/.chatgpt-cloakbrowser-profile`；`CLOAKBROWSER_FINGERPRINT_SEED` 用来保持稳定的回访浏览器身份。
+
+保持这个通道与默认 Playwright / CDP profile 隔离。它只验证抗风控浏览器载体能否保持登录、加载插件、让页面可控；通过后再考虑完整桥接 e2e。
+
+`auth:bootstrap-cloak` 是交互式登录入口，应由人工终端运行。登录完成并回车后，脚本会关闭并重开同一 profile 来验证登录态是否持久。
+
 ## Diagnostic replay lane
 
 Storage replay is now diagnostic-only:
