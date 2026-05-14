@@ -1623,10 +1623,27 @@ async function waitForAcceptanceEvidenceWithTimeout(page, baselineUserCount, tim
     }
 
     const generating = await page.evaluate(() => {
-      return Boolean(
-        document.querySelector('button[data-testid="stop-button"]') ||
-        document.querySelector('button[data-testid="stop-generating-button"]')
-      );
+      const isVisibleGenerationButton = (element) => {
+        if (!element || element.disabled === true || element.getAttribute?.("aria-disabled") === "true") {
+          return false;
+        }
+        if (element.hidden || element.getAttribute?.("aria-hidden") === "true") {
+          return false;
+        }
+        const style = getComputedStyle(element);
+        if (style.display === "none" || style.visibility === "hidden") {
+          return false;
+        }
+        return Boolean(element.getClientRects?.().length);
+      };
+
+      return [
+        'button[data-testid="stop-button"]',
+        'button[data-testid="stop-generating-button"]',
+        'button[aria-label*="停止回答"]',
+        'button[aria-label*="Stop generating"]',
+        'button[aria-label*="Stop response"]'
+      ].some((selector) => Array.from(document.querySelectorAll(selector)).some(isVisibleGenerationButton));
     });
     if (generating) {
       return true;
@@ -1914,13 +1931,26 @@ export async function collectThreadObservation(page) {
     const latestUser = findLatestBySelectors(userSelectors);
     const latestAssistant = findLatestBySelectors(assistantSelectors);
 
-    const generating = Boolean(
-      document.querySelector('button[data-testid="stop-button"]') ||
-        document.querySelector('button[data-testid="stop-generating-button"]') ||
-        document.querySelector('button[aria-label*="Stop"]') ||
-        document.querySelector('button[aria-label*="停止"]') ||
-        document.querySelector('button[aria-label*="Cancel"]')
-    );
+    const isVisibleGenerationButton = (element) => {
+      if (!element || element.disabled === true || element.getAttribute?.("aria-disabled") === "true") {
+        return false;
+      }
+      if (element.hidden || element.getAttribute?.("aria-hidden") === "true") {
+        return false;
+      }
+      const style = getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden") {
+        return false;
+      }
+      return Boolean(element.getClientRects?.().length);
+    };
+    const generating = [
+      'button[data-testid="stop-button"]',
+      'button[data-testid="stop-generating-button"]',
+      'button[aria-label*="停止回答"]',
+      'button[aria-label*="Stop generating"]',
+      'button[aria-label*="Stop response"]'
+    ].some((selector) => Array.from(document.querySelectorAll(selector)).some(isVisibleGenerationButton));
 
     return {
       timestamp: new Date().toISOString(),
@@ -2414,9 +2444,26 @@ export async function hasSessionEvidence(page) {
       return true;
     }
 
-    const generating = document.querySelector('button[data-testid="stop-button"]') ||
-      document.querySelector('button[data-testid="stop-generating-button"]');
-    return Boolean(generating);
+    const isVisibleGenerationButton = (element) => {
+      if (!element || element.disabled === true || element.getAttribute?.("aria-disabled") === "true") {
+        return false;
+      }
+      if (element.hidden || element.getAttribute?.("aria-hidden") === "true") {
+        return false;
+      }
+      const style = getComputedStyle(element);
+      if (style.display === "none" || style.visibility === "hidden") {
+        return false;
+      }
+      return Boolean(element.getClientRects?.().length);
+    };
+    return [
+      'button[data-testid="stop-button"]',
+      'button[data-testid="stop-generating-button"]',
+      'button[aria-label*="停止回答"]',
+      'button[aria-label*="Stop generating"]',
+      'button[aria-label*="Stop response"]'
+    ].some((selector) => Array.from(document.querySelectorAll(selector)).some(isVisibleGenerationButton));
   });
 }
 
@@ -2693,13 +2740,21 @@ export async function readOverlayState(page) {
       return el ? el.getAttribute(attr) : null;
     };
 
+    const issueRow =
+      overlay.querySelector("[data-slot='issue-row']") ||
+      overlay.querySelector("[data-issue-row]");
+    const visibleIssue =
+      issueRow && issueRow.hidden !== true
+        ? (getText("[data-issue]") ?? getText("[data-slot='issue']"))
+        : null;
+
     return {
       phase: getAttr("[data-phase]", "data-phase"),
-      binding: getText("[data-binding]"),
-      round: getText("[data-round]"),
-      nextHop: getText("[data-next-hop]"),
-      currentStep: getText("[data-step]"),
-      lastIssue: getText("[data-issue]"),
+      binding: getText("[data-binding]") ?? getText("[data-slot='role']"),
+      round: getText("[data-round]") ?? getText("[data-slot='round']"),
+      nextHop: getText("[data-next-hop]") ?? getText("[data-slot='next-hop']"),
+      currentStep: getText("[data-step]") ?? getText("[data-slot='step']"),
+      lastIssue: visibleIssue,
       startDisabled: getAttr("[data-action='start']", "disabled"),
       pauseDisabled: getAttr("[data-action='pause']", "disabled"),
       resumeDisabled: getAttr("[data-action='resume']", "disabled"),
@@ -2874,7 +2929,8 @@ export async function getRuntimeState(popupPage) {
           activeHop: state?.activeHop || null,
           nextHopSource: state?.nextHopSource ?? null,
           nextHopOverride: state?.nextHopOverride ?? null,
-          round: state?.round ?? null
+          round: state?.round ?? null,
+          settings: state?.settings ?? null
         };
       } catch (error) {
         return { error: error.message };

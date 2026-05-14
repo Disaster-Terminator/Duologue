@@ -1,6 +1,7 @@
 /**
  * E2E Bridge Test Runner with Scenario Matrix.
- * Defaults to an anonymous/live-session baseline unless auth is explicitly provided.
+ * Reuses an existing persistent profile when available; --anonymous forces the
+ * anonymous/live-session baseline.
  * Runner creates env once, scenarios receive env and return result.
  */
 
@@ -8,10 +9,12 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import process from "node:process";
 import fs from "node:fs/promises";
+import { spawn } from "node:child_process";
 
 import {
   connectBrowserWithExtensionOrCdp,
   cleanupBrowserConnection,
+  DEFAULT_CLOAKBROWSER_PROFILE_DIR,
   getTwoPages,
   readFlag,
   readPathFlag,
@@ -61,9 +64,14 @@ const urlB = readFlag("--url-b");
 const scenarioFilter = readFlag("--scenario");
 const skipBootstrap = process.argv.includes("--skip-bootstrap");
 const rootOnly = process.argv.includes("--root-only");
+const forceAnonymous = process.argv.includes("--anonymous");
+const skipDebugLogServer = process.argv.includes("--no-debug-log-server");
 const cdpEndpointArg = readFlag("--cdp-endpoint");
 const reuseOpenChatgptTab = !process.argv.includes("--no-reuse-open-chatgpt-tab");
 const noNavOnAttach = !process.argv.includes("--nav-on-attach");
+const e2eMaxRounds = readPositiveIntFlag("--rounds") ?? readPositiveIntFlag("--max-rounds");
+const repoCloakbrowserProfileDir = path.resolve(process.cwd(), "tmp/cloakbrowser-auth-profile");
+const debugLogServerUrl = `http://${process.env.BRIDGE_DEBUG_HOST ?? "127.0.0.1"}:${process.env.BRIDGE_DEBUG_PORT ?? "17761"}`;
 const TASK9_SCENARIOS = new Set([
   "resume-with-override-a",
   "resume-with-override-b",
@@ -88,6 +96,9 @@ const browserStrategy = resolveBrowserStrategyFromCli({
   noNavOnAttach
 });
 
+const persistentProfile = await resolvePersistentProfilePreference();
+let managedDebugLogServer = null;
+
 let sessionStorageData = null;
 if (authOptions.useAuth) {
   const authValidation = await validateAuthFiles(authOptions.storageStatePath, authOptions.sessionStoragePath);
@@ -101,7 +112,11 @@ if (authOptions.useAuth) {
   console.log(`[e2e] Auth mode: enabled (${authOptions.storageStatePath || "session-only"})`);
   console.log(`[e2e] Session storage: ${authOptions.sessionStoragePath || "not provided"} (${sessionStorageData ? "loaded" : "not found"})`);
 } else {
-  console.log("[e2e] Auth mode: disabled by default; using anonymous/live-session baseline.");
+  if (persistentProfile) {
+    console.log(`[e2e] Auth carrier: persistent profile (${persistentProfile.carrier}, ${persistentProfile.userDataDir})`);
+  } else {
+    console.log("[e2e] Auth mode: disabled; using anonymous/live-session baseline.");
+  }
 }
 
 // Scenario registry - each receives env and returns { success: true } or throws
@@ -120,6 +135,94 @@ const scenarios = {
 
 function normalizeText(value) {
   return String(value || "").replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").trim();
+}
+
+function readPositiveIntFlag(name) {
+  const raw = readFlag(name);
+  if (!raw) {
+    return null;
+  }
+
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 2 || value > 50) {
+    throw new Error(`${name} must be an integer from 2 to 50, got ${raw}`);
+  }
+  return value;
+}
+
+async function pathExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolvePersistentProfilePreference() {
+  if (forceAnonymous || browserStrategy.mode === "cdp" || authOptions.useAuth) {
+    return null;
+  }
+
+  const explicitCloakProfile = process.env.CLOAKBROWSER_PROFILE_DIR || null;
+  const explicitPlaywrightProfile = process.env.CHATGPT_PLAYWRIGHT_PROFILE_DIR || null;
+
+  if (explicitCloakProfile) {
+    return { carrier: "cloakbrowser", userDataDir: path.resolve(explicitCloakProfile) };
+  }
+
+  if (explicitPlaywrightProfile) {
+    return { carrier: "playwright", userDataDir: path.resolve(explicitPlaywrightProfile) };
+  }
+
+  if (await pathExists(repoCloakbrowserProfileDir)) {
+    return { carrier: "cloakbrowser", userDataDir: repoCloakbrowserProfileDir };
+  }
+
+  if (await pathExists(DEFAULT_CLOAKBROWSER_PROFILE_DIR)) {
+    return { carrier: "cloakbrowser", userDataDir: DEFAULT_CLOAKBROWSER_PROFILE_DIR };
+  }
+
+  return null;
+}
+
+async function isDebugLogServerHealthy() {
+  try {
+    const response = await fetch(`${debugLogServerUrl}/health`, { signal: AbortSignal.timeout(1200) });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureDebugLogServer() {
+  if (skipDebugLogServer) {
+    console.log("[e2e] Debug log server: disabled by --no-debug-log-server");
+    return null;
+  }
+
+  if (await isDebugLogServerHealthy()) {
+    console.log(`[e2e] Debug log server: reusing ${debugLogServerUrl}`);
+    return null;
+  }
+
+  const server = spawn(process.execPath, [path.resolve(process.cwd(), "scripts/debug-log-server.mjs")], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: ["ignore", "inherit", "inherit"]
+  });
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 5000) {
+    if (await isDebugLogServerHealthy()) {
+      console.log(`[e2e] Debug log server: started ${debugLogServerUrl}`);
+      return server;
+    }
+    await sleep(200);
+  }
+
+  server.kill();
+  throw new Error(`Debug log server did not become healthy at ${debugLogServerUrl}`);
 }
 
 function hasTerminalBridgeDirective(text) {
@@ -388,10 +491,35 @@ async function normalizeRuntimeToReady(popupPage) {
   return runtimeState;
 }
 
-async function sendPopupRuntimeAction(popupPage, type) {
-  return popupPage.evaluate(async (messageType) => {
+async function configureHarnessRuntimeSettings(popupPage) {
+  if (!e2eMaxRounds) {
+    return;
+  }
+
+  const response = await sendPopupRuntimeAction(popupPage, "SET_RUNTIME_SETTINGS", {
+    settings: {
+      maxRoundsEnabled: true,
+      maxRounds: e2eMaxRounds
+    }
+  });
+
+  if (!response?.ok) {
+    throw new Error(`Failed to configure e2e max rounds: ${JSON.stringify(response)}`);
+  }
+
+  const runtimeState = response.result ?? await getRuntimeState(popupPage);
+  assert.equal(
+    runtimeState.settings?.maxRounds,
+    e2eMaxRounds,
+    `Expected e2e maxRounds=${e2eMaxRounds}, got ${JSON.stringify(runtimeState)}`
+  );
+  console.log(`[e2e] Runtime max rounds: ${e2eMaxRounds}`);
+}
+
+async function sendPopupRuntimeAction(popupPage, type, fields = {}) {
+  return popupPage.evaluate(async ({ messageType, messageFields }) => {
     return await new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({ type: messageType }, (response) => {
+      chrome.runtime.sendMessage({ type: messageType, ...messageFields }, (response) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
           return;
@@ -400,7 +528,7 @@ async function sendPopupRuntimeAction(popupPage, type) {
         resolve(response);
       });
     });
-  }, type);
+  }, { messageType: type, messageFields: fields });
 }
 
 async function reloadExtensionRuntime(context, popupPage, extensionId) {
@@ -1062,10 +1190,26 @@ async function runScenario(name, scenarioFn) {
         const targetActivity = await canonicalTarget.targetPage.evaluate(() => {
           const result = { generating: false, sendButtonReady: false, userMessages: 0, assistantMessages: 0 };
           
-          // Check for stop button (generating)
-          const stopButton = document.querySelector('button[data-testid="stop-button"]') || 
-                            document.querySelector('button[data-testid="stop-generating-button"]');
-          result.generating = !!stopButton;
+          const isVisibleGenerationButton = (element) => {
+            if (!element || element.disabled === true || element.getAttribute?.("aria-disabled") === "true") {
+              return false;
+            }
+            if (element.hidden || element.getAttribute?.("aria-hidden") === "true") {
+              return false;
+            }
+            const style = getComputedStyle(element);
+            if (style.display === "none" || style.visibility === "hidden") {
+              return false;
+            }
+            return Boolean(element.getClientRects?.().length);
+          };
+          result.generating = [
+            'button[data-testid="stop-button"]',
+            'button[data-testid="stop-generating-button"]',
+            'button[aria-label*="停止回答"]',
+            'button[aria-label*="Stop generating"]',
+            'button[aria-label*="Stop response"]'
+          ].some((selector) => Array.from(document.querySelectorAll(selector)).some(isVisibleGenerationButton));
           
           // Check send button
           const sendButton = document.querySelector('button[data-testid="send-button"]') ||
@@ -1145,7 +1289,9 @@ async function createEnv(scenarioName) {
     browserExecutablePath,
     storageStatePath: authOptions.storageStatePath,
     sessionStorageData,
-    strategy: browserStrategy
+    strategy: browserStrategy,
+    browserCarrier: persistentProfile?.carrier,
+    userDataDir: persistentProfile?.userDataDir
   });
   const { context } = browserConnection;
   
@@ -1202,7 +1348,12 @@ async function createEnv(scenarioName) {
       await assertSupportedThreadUrl(pageB, "pageB (manual)");
     }
   } else {
-    console.log(`  Using ${authOptions.useAuth ? "auth-backed" : "anonymous"} ChatGPT root baseline...`);
+    const baselineLabel = authOptions.useAuth
+      ? "auth-backed"
+      : persistentProfile
+        ? "persistent-profile"
+        : "anonymous";
+    console.log(`  Using ${baselineLabel} ChatGPT root baseline...`);
     await Promise.all([ensureChatGptPage(pageA), ensureChatGptPage(pageB)]);
     
     // Restore sessionStorage after navigation (backup to init script)
@@ -1218,12 +1369,13 @@ async function createEnv(scenarioName) {
     // Give page time to stabilize
     await sleep(2000);
     
-    if (authOptions.useAuth) {
+    if (authOptions.useAuth || persistentProfile) {
       const postNavCheckA = await validateAuthState(pageA);
       if (!postNavCheckA.valid) {
         await cleanupBrowserConnection(browserConnection);
-        console.error(`[e2e] ERROR: Auth expired after navigation: ${postNavCheckA.error}`);
-        process.exit(1);
+        throw new Error(
+          `${persistentProfile ? "persistent_profile_auth_unavailable" : "auth_expired_after_navigation"}: ${postNavCheckA.error}`
+        );
       }
       console.log("  [e2e] Post-navigation auth verified");
     }
@@ -1289,11 +1441,13 @@ async function createEnv(scenarioName) {
       if (reboundB) pageB = reboundB;
     }
 
-    // Normalize runtime to ready state at harness entry - before any scenario runs
-    // This ensures we don't inherit stale running/stopped state from previous sessions
-    const normalizedRuntimeState = await normalizeRuntimeToReady(popupPage);
-    console.log(`  [e2e] Initial runtime state after normalization: ${normalizedRuntimeState.phase}`);
   }
+
+  // Normalize runtime to ready state at harness entry - before any scenario runs.
+  // This ensures we don't inherit stale running/stopped state from previous sessions.
+  const normalizedRuntimeState = await normalizeRuntimeToReady(popupPage);
+  console.log(`  [e2e] Initial runtime state after normalization: ${normalizedRuntimeState.phase}`);
+  await configureHarnessRuntimeSettings(popupPage);
 
   return {
     context,
@@ -1520,7 +1674,7 @@ async function runStarterBusyBeforeResume(env) {
 }
 
 async function runPopupOverlaySync(env) {
-  const { pageA, pageB, popupPage } = env;
+  const { pageA, pageB, popupPage } = await buildTask9ReadyEnv(env);
   
   // Start the relay
   await expectOverlayActionEnabled(pageA, "start");
@@ -1530,17 +1684,8 @@ async function runPopupOverlaySync(env) {
   // Let it run briefly
   await sleep(3000);
 
-  // Compare popup vs overlay A
-  const popupState = await readPopupState(popupPage);
-  const overlayAState = await readOverlayState(pageA);
-  
-  const comparisonA = compareStates(popupState, overlayAState);
-  assert.ok(comparisonA.consistent, `Popup vs Overlay A mismatch: ${comparisonA.mismatches.join(", ")}`);
-
-  // Compare popup vs overlay B
-  const overlayBState = await readOverlayState(pageB);
-  const comparisonB = compareStates(popupState, overlayBState);
-  assert.ok(comparisonB.consistent, `Popup vs Overlay B mismatch: ${comparisonB.mismatches.join(", ")}`);
+  await waitForPopupOverlayConsistency({ popupPage, overlayPage: pageA, label: "Overlay A" });
+  await waitForPopupOverlayConsistency({ popupPage, overlayPage: pageB, label: "Overlay B" });
 
   // Stop
   await clickPopupAction(popupPage, "stop");
@@ -1556,6 +1701,27 @@ async function runPopupOverlaySync(env) {
   }
 
   return { success: true };
+}
+
+async function waitForPopupOverlayConsistency({ popupPage, overlayPage, label, timeoutMs = 30000 }) {
+  const startedAt = Date.now();
+  let lastMismatch = "not_checked";
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const [popupState, overlayState] = await Promise.all([
+      readPopupState(popupPage),
+      readOverlayState(overlayPage)
+    ]);
+    const comparison = compareStates(popupState, overlayState);
+    if (comparison.consistent) {
+      return;
+    }
+
+    lastMismatch = `${label} mismatch: ${comparison.mismatches.join(", ")}`;
+    await sleep(500);
+  }
+
+  throw new Error(lastMismatch);
 }
 
 async function runSourceBusyBeforeHop(env) {
@@ -1843,6 +2009,7 @@ async function runTask9Suite(env) {
 // ===== MAIN EXECUTION =====
 
 async function main() {
+  managedDebugLogServer = await ensureDebugLogServer();
   const results = [];
 const scenarioNames = scenarioFilter
   ? [scenarioFilter]
@@ -1884,14 +2051,27 @@ const scenarioNames = scenarioFilter
   const failedCount = results.filter(r => r.status !== "PASS").length;
   if (failedCount > 0) {
     console.log(`\n${failedCount} scenario(s) did not pass.`);
+    await cleanupManagedDebugLogServer();
     process.exit(1);
   } else {
     console.log("\nAll scenarios passed!");
+    await cleanupManagedDebugLogServer();
     process.exit(0);
   }
 }
 
 main().catch(error => {
   console.error("E2E runner error:", error);
+  void cleanupManagedDebugLogServer().finally(() => {
   process.exit(1);
+  });
 });
+
+async function cleanupManagedDebugLogServer() {
+  if (!managedDebugLogServer) {
+    return;
+  }
+
+  managedDebugLogServer.kill();
+  managedDebugLogServer = null;
+}

@@ -200,7 +200,7 @@ pnpm run test:semi
 pnpm run test:e2e
 ```
 
-See `docs/development.md` for development gates and `docs/testing.md` for testing/auth carrier lanes. `docs/auth.md` is retained as historical auth investigation notes and is not the current testing source of truth.
+See `docs/development.md` for development gates and `docs/testing.md` for testing/auth carrier lanes. `docs/auth.md` and `docs/archive/` are retained as historical auth/session notes and are not the current testing source of truth.
 
 ---
 

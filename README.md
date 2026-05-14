@@ -208,7 +208,7 @@ pnpm run test:semi
 pnpm run test:e2e
 ```
 
-更多开发说明见 `docs/development.md`，测试分层和登录态载体说明见 `docs/testing.md`。旧的认证实验记录见 `docs/auth.md`，不作为当前测试事实源。
+更多开发说明见 `docs/development.md`，测试分层和登录态载体说明见 `docs/testing.md`。旧的认证实验记录见 `docs/auth.md`，已归档的会话/实验记录见 `docs/archive/`，均不作为当前测试事实源。
 
 ---
 

@@ -80,18 +80,32 @@ export function isReplyGenerationInProgressFromDoc(latestAssistantText: unknown)
 }
 
 function hasGenerationControlButtonFromDoc(): boolean {
-  if (
-    document.querySelector('button[data-testid="stop-button"]') ||
-    document.querySelector('button[data-testid="stop-generating-button"]')
-  ) {
-    return true;
+  const selectors = [
+    'button[data-testid="stop-button"]',
+    'button[data-testid="stop-generating-button"]',
+    'button[aria-label*="停止回答"]',
+    'button[aria-label*="Stop generating"]',
+    'button[aria-label*="Stop response"]'
+  ];
+
+  return selectors.some((selector) =>
+    findGenerationControlCandidates(selector).some(isActionableGenerationControl)
+  );
+}
+
+function findGenerationControlCandidates(selector: string): Element[] {
+  const all = Array.from(document.querySelectorAll?.(selector) ?? []);
+  if (all.length > 0) {
+    return all;
   }
 
-  return Boolean(
-    document.querySelector('button[aria-label*="停止"]') ||
-    document.querySelector('button[aria-label*="Stop"]') ||
-    document.querySelector('button[aria-label*="Cancel"]')
-  );
+  const single = document.querySelector?.(selector);
+  return single ? [single] : [];
+}
+
+function isActionableGenerationControl(element: Element): boolean {
+  const button = element as HTMLButtonElement;
+  return !isDisabledButton(button) && isElementVisible(element);
 }
 
 function hasTerminalBridgeDirective(value: unknown): boolean {

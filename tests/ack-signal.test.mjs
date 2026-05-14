@@ -20,6 +20,16 @@ function createMockComposer(text) {
   };
 }
 
+function createVisibleButton(overrides = {}) {
+  return {
+    disabled: false,
+    hidden: false,
+    getAttribute: () => null,
+    getClientRects: () => [{ width: 24, height: 24 }],
+    ...overrides
+  };
+}
+
 test("isComposerTrulyCleared returns true for empty composer", () => {
   const result = isComposerTrulyCleared("", "hello world");
   assert.equal(result, true);
@@ -141,9 +151,10 @@ test("REGRESSION: checkAckSignals does NOT ack when baseline was generating and 
 // TEST 3: Only !baselineGenerating && currentGenerating should trigger generation_started
 test("REGRESSION: checkAckSignals ONLY acks generation_started when generation actually starts", async () => {
   // Mock: generation was NOT running, now IS running (true start)
+  const stopButton = createVisibleButton();
   const mockDoc = {
     querySelector: (selector) => {
-      if (selector.includes("stop-button")) return {};  // Generation IS running
+      if (selector.includes("stop-button")) return stopButton;  // Generation IS running
       return null;
     },
     querySelectorAll: () => []
@@ -475,10 +486,11 @@ test("checkAckSignals returns null when no acknowledgment signal detected", asyn
 });
 
 test("isGenerationInProgressFromDoc detects stop button presence", async () => {
+  const stopButton = createVisibleButton();
   const mockDoc = {
     querySelector: (selector) => {
       if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
-        return {};
+        return stopButton;
       }
       return null;
     }
@@ -495,6 +507,7 @@ test("isGenerationInProgressFromDoc detects stop button presence", async () => {
 });
 
 test("isGenerationInProgressFromDoc detects aria-label stop patterns", async () => {
+  const stopButton = createVisibleButton();
   const mockDoc = {
     querySelector: (selector) => {
       if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
@@ -502,7 +515,7 @@ test("isGenerationInProgressFromDoc detects aria-label stop patterns", async () 
       }
       // For aria-label patterns
       if (selector.includes("aria-label")) {
-        return {};
+        return stopButton;
       }
       return null;
     }
@@ -514,6 +527,56 @@ test("isGenerationInProgressFromDoc detects aria-label stop patterns", async () 
     const result = isGenerationInProgressFromDoc();
     // May return true or false depending on implementation detail
     // This tests the aria-label path exists
+    assert.equal(result, true);
+  } finally {
+    globalThis.document = originalGlobal;
+  }
+});
+
+test("isGenerationInProgressFromDoc ignores stale hidden stop controls", async () => {
+  const hiddenStopButton = createVisibleButton({
+    getClientRects: () => []
+  });
+  const mockDoc = {
+    querySelectorAll: (selector) => {
+      if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
+        return [hiddenStopButton];
+      }
+      return [];
+    },
+    querySelector: () => null
+  };
+  const originalGlobal = globalThis.document;
+  globalThis.document = mockDoc;
+
+  try {
+    const result = isGenerationInProgressFromDoc();
+    assert.equal(result, false);
+  } finally {
+    globalThis.document = originalGlobal;
+  }
+});
+
+test("isGenerationInProgressFromDoc ignores disabled stop controls", async () => {
+  const disabledStopButton = createVisibleButton({
+    disabled: true,
+    getAttribute: (name) => (name === "aria-disabled" ? "true" : null)
+  });
+  const mockDoc = {
+    querySelectorAll: (selector) => {
+      if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
+        return [disabledStopButton];
+      }
+      return [];
+    },
+    querySelector: () => null
+  };
+  const originalGlobal = globalThis.document;
+  globalThis.document = mockDoc;
+
+  try {
+    const result = isGenerationInProgressFromDoc();
+    assert.equal(result, false);
   } finally {
     globalThis.document = originalGlobal;
   }

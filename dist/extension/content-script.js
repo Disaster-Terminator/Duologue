@@ -50,12 +50,28 @@ function isReplyGenerationInProgressFromDoc(latestAssistantText) {
   return hasGenerationControlButtonFromDoc() || isLatestUserAfterLatestAssistantFromDoc();
 }
 function hasGenerationControlButtonFromDoc() {
-  if (document.querySelector('button[data-testid="stop-button"]') || document.querySelector('button[data-testid="stop-generating-button"]')) {
-    return true;
-  }
-  return Boolean(
-    document.querySelector('button[aria-label*="\u505C\u6B62"]') || document.querySelector('button[aria-label*="Stop"]') || document.querySelector('button[aria-label*="Cancel"]')
+  const selectors = [
+    'button[data-testid="stop-button"]',
+    'button[data-testid="stop-generating-button"]',
+    'button[aria-label*="\u505C\u6B62\u56DE\u7B54"]',
+    'button[aria-label*="Stop generating"]',
+    'button[aria-label*="Stop response"]'
+  ];
+  return selectors.some(
+    (selector) => findGenerationControlCandidates(selector).some(isActionableGenerationControl)
   );
+}
+function findGenerationControlCandidates(selector) {
+  const all = Array.from(document.querySelectorAll?.(selector) ?? []);
+  if (all.length > 0) {
+    return all;
+  }
+  const single = document.querySelector?.(selector);
+  return single ? [single] : [];
+}
+function isActionableGenerationControl(element) {
+  const button = element;
+  return !isDisabledButton(button) && isElementVisible(element);
 }
 function hasTerminalBridgeDirective(value) {
   const normalized = normalizeText(value);

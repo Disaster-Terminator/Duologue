@@ -355,7 +355,7 @@ test("formatObservationFailurePollSample preserves target diagnostics for unreac
   assert.match(sample, /tab_pending_url:https:\/\/chatgpt\.com\/c\/thread-b/);
 });
 
-test("buildOverlaySnapshot does not request source tab activity for overlay refresh", async () => {
+test("buildOverlaySnapshot uses source tab activity so overlay readiness matches popup", async () => {
   chromeEnvironment.reset();
   const state = createInitialState();
   state.phase = PHASES.READY;
@@ -363,8 +363,20 @@ test("buildOverlaySnapshot does not request source tab activity for overlay refr
   state.bindings.B = createBinding("B", 202, "target-thread");
   state.nextHopSource = "A";
 
-  chromeEnvironment.setSendMessageHandler(async () => {
-    throw new Error("overlay_snapshot_should_not_query_tabs");
+  chromeEnvironment.setSendMessageHandler(async (_tabId, message) => {
+    assert.equal(message.type, "GET_THREAD_ACTIVITY");
+    return {
+      ok: true,
+      result: {
+        sample: null,
+        generating: true,
+        latestAssistantHash: "hassistant",
+        latestUserHash: "huser",
+        composerText: "",
+        sendButtonReady: true,
+        composerAvailable: true
+      }
+    };
   });
 
   const snapshot = await buildOverlaySnapshot(state, 101, {
@@ -376,7 +388,10 @@ test("buildOverlaySnapshot does not request source tab activity for overlay refr
 
   assert.equal(snapshot.assignedRole, "A");
   assert.equal(snapshot.nextHop, "A -> B");
-  assert.deepEqual(chromeEnvironment.callLog, []);
+  assert.equal(snapshot.controls.canStart, false);
+  assert.equal(snapshot.readiness.starterReady, false);
+  assert.equal(snapshot.readiness.blockReason, "starter_generating");
+  assert.deepEqual(chromeEnvironment.callLog, [{ tabId: 101, type: "GET_THREAD_ACTIVITY" }]);
 });
 
 test("runRelayLoop resumes a verifying hop on the canonical target without re-sending", async () => {

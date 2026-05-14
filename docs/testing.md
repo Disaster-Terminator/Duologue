@@ -71,10 +71,16 @@ pnpm run test:cloak-smoke
 ```powershell
 $env:CHATGPT_BROWSER_CARRIER = "cloakbrowser"
 $env:CLOAKBROWSER_PROFILE_DIR = "G:\repository\Duologue\tmp\cloakbrowser-auth-profile"
-pnpm run test:e2e -- --root-only --scenario happy-path
+pnpm run test:e2e -- --root-only --scenario happy-path --rounds 4
 ```
 
 不要并行运行多个使用同一 `CLOAKBROWSER_PROFILE_DIR` 的测试；Chromium 持久 profile 只能被一个浏览器实例稳定持有。
+
+`test:e2e` 默认会优先复用已有登录态：显式 `CLOAKBROWSER_PROFILE_DIR`、显式 `CHATGPT_PLAYWRIGHT_PROFILE_DIR`、仓库内 `tmp/cloakbrowser-auth-profile`、最后是 CloakBrowser 默认 profile。只有传 `--anonymous` 时才强制走匿名/live-session 基线；如果选择了持久 profile 但登录态不可用，测试应直接失败，而不是退回要求每轮人工登录。
+
+`--rounds` / `--max-rounds` 允许调用者按本轮风险决定 e2e 最大轮次，范围是 2 到 50。不要用一轮作为业务回归结论；一轮只能证明启动链路，不能证明继续 relay。
+
+`test:e2e` 会探活 `BRIDGE_DEBUG_HOST` / `BRIDGE_DEBUG_PORT` 指向的日志服务器（默认 `127.0.0.1:17761`）。已运行则复用；未运行则自动启动 `scripts/debug-log-server.mjs` 并在测试结束时清理。只有需要显式禁用时才传 `--no-debug-log-server`。
 
 CloakBrowser 通道使用它自己的 Playwright wrapper，不要把它的 `chrome.exe` 传给 `BROWSER_EXECUTABLE_PATH`。它使用独立持久 profile：优先读取 `CLOAKBROWSER_PROFILE_DIR`，否则落到 `~/.chatgpt-cloakbrowser-profile`；`CLOAKBROWSER_FINGERPRINT_SEED` 用来保持稳定的回访浏览器身份。
 
@@ -126,4 +132,4 @@ pnpm run test:storage-auth-smoke
 
 `real-hop`、`semi` 和 `e2e` 都是业务层测试，不负责判断认证载体是否成立。运行它们之前，先让对应 smoke 通过。
 
-目前可自动化证明的主路径是 CloakBrowser happy-path e2e。暂停/恢复、起点切换、空线程边界、长轮次后台运行仍以人工真实浏览器测试为主；当某个问题可以稳定复现，再把它收敛成自动化用例。
+目前可自动化证明的主路径是 CloakBrowser happy-path e2e。暂停/恢复、起点切换、空线程边界、长轮次后台运行仍以人工真实浏览器测试为主；当某个问题可以稳定复现，再把它收敛成自动化用例。popup 与悬浮窗状态不一致属于回归，测试应读取同一份线程 activity，而不是让悬浮窗用空 activity 推导 readiness。

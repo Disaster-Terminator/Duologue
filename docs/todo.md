@@ -14,6 +14,8 @@
 - 保持 `docs/testing.md` 为测试/e2e/认证载体事实源。
 - 保持 `docs/development.md` 为 Node、pnpm、hooks、CI、构建产物策略事实源。
 - `docs/auth.md` 只保留历史认证路线和已降级方案，不作为当前测试入口。
+- 根目录不再保留会话交接/实验 Markdown；历史记录统一进入 `docs/archive/`。
+- `.sisyphus/` 属于本地运行态/历史代理状态，不再作为仓库跟踪内容。
 - 发布说明继续明确：推荐下载 GitHub Actions artifact；源码构建时加载 `dist/extension`；`dist/extension` 是提交产物。
 
 ## P2：Relay 稳定性

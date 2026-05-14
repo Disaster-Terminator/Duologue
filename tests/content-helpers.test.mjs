@@ -14,6 +14,16 @@ vm.runInNewContext(source, context, {
 
 const helpers = context.globalThis.ChatGptBridgeContent;
 
+function createVisibleButton(overrides = {}) {
+  return {
+    disabled: false,
+    hidden: false,
+    getAttribute: () => null,
+    getClientRects: () => [{ width: 24, height: 24 }],
+    ...overrides
+  };
+}
+
 test("applyComposerText uses value for textarea composers", () => {
   const dispatched = [];
   class FakeTextArea {}
@@ -152,10 +162,11 @@ test("triggerComposerSend fails explicitly when send button is unavailable", () 
 });
 
 test("isReplyGenerationInProgressFromDoc treats terminal bridge directives as settled even with stale stop UI", () => {
+  const stopButton = createVisibleButton();
   const mockDoc = {
     querySelector: (selector) => {
       if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
-        return {};
+        return stopButton;
       }
       return null;
     }
@@ -175,10 +186,11 @@ test("isReplyGenerationInProgressFromDoc treats terminal bridge directives as se
 });
 
 test("isReplyGenerationInProgressFromDoc stays true for streaming replies without terminal evidence", () => {
+  const stopButton = createVisibleButton();
   const mockDoc = {
     querySelector: (selector) => {
       if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
-        return {};
+        return stopButton;
       }
       return null;
     }
@@ -191,6 +203,30 @@ test("isReplyGenerationInProgressFromDoc stays true for streaming replies withou
   try {
     const result = helpers.isReplyGenerationInProgressFromDoc("reply still streaming");
     assert.equal(result, true);
+  } finally {
+    globalThis.document = originalGlobal;
+    context.document = originalContextDocument;
+  }
+});
+
+test("isReplyGenerationInProgressFromDoc ignores hidden stale stop controls", () => {
+  const mockDoc = {
+    querySelectorAll: (selector) => {
+      if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
+        return [createVisibleButton({ getClientRects: () => [] })];
+      }
+      return [];
+    },
+    querySelector: () => null
+  };
+  const originalGlobal = globalThis.document;
+  const originalContextDocument = context.document;
+  globalThis.document = mockDoc;
+  context.document = mockDoc;
+
+  try {
+    const result = helpers.isReplyGenerationInProgressFromDoc("reply is settled");
+    assert.equal(result, false);
   } finally {
     globalThis.document = originalGlobal;
     context.document = originalContextDocument;

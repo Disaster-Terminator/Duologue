@@ -2672,7 +2672,18 @@ export async function buildOverlaySnapshot(
   tabId: number | null,
   overlaySettings: OverlaySettings
 ): Promise<OverlayModel> {
-  const readiness = computeReadiness(state, null);
+  const sourceRole = state.activeHop?.sourceRole ?? state.nextHopOverride ?? state.nextHopSource;
+  const sourceBinding = state.bindings[sourceRole];
+  let sourceThreadActivity = null;
+
+  if (sourceBinding) {
+    const activity = await requestThreadActivity(sourceBinding.tabId);
+    if (activity.ok) {
+      sourceThreadActivity = activity.result;
+    }
+  }
+
+  const readiness = computeReadiness(state, sourceThreadActivity);
 
   return {
     phase: state.phase,
