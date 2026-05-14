@@ -3,7 +3,10 @@
     "build": "node scripts/build-extension.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
-    "check": "pnpm run typecheck && pnpm test && pnpm run build && pnpm run verify:dist",
+    "check": "pnpm run gate:local",
+    "gate:commit": "pnpm run typecheck",
+    "gate:local": "pnpm run typecheck && pnpm test && pnpm run check:generated",
+    "check:generated": "pnpm run build && pnpm run verify:dist",
     "verify:dist": "git diff --exit-code -- dist/extension",
     "test:smoke": "node scripts/persistent-profile-auth-smoke.mjs",
     "test:cloak-smoke": "node scripts/cloakbrowser-auth-smoke.mjs",
@@ -25,7 +28,8 @@
     "auth:export:cdp-storage": "node scripts/export-storage-state-from-cdp.mjs",
     "auth:export:legacy": "node scripts/export-chatgpt-auth.mjs",
     "auth:verify": "node scripts/verify-chatgpt-auth.mjs",
-    "debug:log-server": "node scripts/debug-log-server.mjs"
+    "debug:log-server": "node scripts/debug-log-server.mjs",
+    "dev:install-hooks": "node scripts/install-git-hooks.mjs"
   },
   "dependencies": {
     "@openai/codex": "^0.118.0",

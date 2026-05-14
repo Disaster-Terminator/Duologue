@@ -14,10 +14,9 @@ pnpm run check
 
 1. `pnpm run typecheck`
 2. `pnpm test`
-3. `pnpm run build`
-4. `pnpm run verify:dist`
+3. `pnpm run check:generated`
 
-`verify:dist` 会检查 `dist/extension` 是否与源码构建结果一致。当前策略是提交源码和 `dist/extension`，CI 也会检查两者同步，并上传扩展目录和 zip 作为构建产物。
+`check:generated` 会先构建扩展，再检查 `dist/extension` 是否与源码构建结果一致。当前策略是提交源码和 `dist/extension`，CI 也会检查两者同步，并上传扩展目录和 zip 作为构建产物。
 
 ## 调试日志
 

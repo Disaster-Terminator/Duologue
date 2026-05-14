@@ -17,6 +17,22 @@ pnpm run check
 pnpm run verify:dist
 ```
 
+## Git hooks
+
+本仓库采用和 Retinue 一样的分层门控，但针对浏览器扩展产物做了收敛：
+
+- `pre-commit`：运行 `pnpm run gate:commit`，只做快速代码门，目前是 TypeScript 类型检查。
+- `post-commit`：运行 `pnpm run check:generated`，重新构建并确认 `dist/extension` 已随源码提交。
+- `pre-push`：运行 `pnpm run gate:local`，覆盖类型检查、单元测试和生成产物一致性。
+
+安装 hooks：
+
+```bash
+pnpm run dev:install-hooks
+```
+
+需要显式临时绕过时设置 `BRIDGE_SKIP_GIT_HOOKS=1`。不要把绕过当作常规流程；如果 `post-commit` 报 `dist/extension` 不一致，按提示重新构建、添加 `dist/extension` 并 amend 当前提交。
+
 ## 调试日志服务器
 
 手动 relay 或 e2e 调试前，先启动本地运行时日志接收服务：

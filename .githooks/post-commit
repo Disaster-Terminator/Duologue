@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+
+if [ "${BRIDGE_SKIP_GIT_HOOKS:-}" = "1" ]; then
+  exit 0
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "ChatGPT Tab Bridge post-commit: pnpm is not on PATH; skipping generated artifact check." >&2
+  exit 0
+fi
+
+echo "ChatGPT Tab Bridge post-commit: checking generated extension output..."
+
+if pnpm run check:generated; then
+  exit 0
+fi
+
+cat >&2 <<'EOF'
+ChatGPT Tab Bridge post-commit: generated extension output does not match the committed source.
+
+Fix the commit before pushing:
+  pnpm run build
+  git add dist/extension
+  git commit --amend --no-edit
+
+Set BRIDGE_SKIP_GIT_HOOKS=1 only for explicit emergency local bypasses.
+EOF
+
+exit 1

@@ -34,14 +34,11 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      - name: Check generated extension output
+        run: pnpm run check:generated
+
       - name: Unit tests
         run: pnpm test
-
-      - name: Build extension
-        run: pnpm run build
-
-      - name: Verify committed extension output
-        run: pnpm run verify:dist
 
       - name: Package extension zip
         run: |
