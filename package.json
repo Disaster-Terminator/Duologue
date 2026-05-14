@@ -32,6 +32,7 @@
     "dev:install-hooks": "node scripts/install-git-hooks.mjs"
   },
   "packageManager": "pnpm@10.33.2",
+  "type": "module",
   "engines": {
     "node": ">=24.0.0"
   },
