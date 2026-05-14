@@ -45,6 +45,8 @@ pnpm run test:cloak-smoke
 
 `auth:bootstrap-cloak` 是交互式登录入口，应由人工终端运行。登录完成并回车后，脚本会关闭并重开同一 profile 来验证登录态是否持久。
 
+浏览器窗口默认使用 `1280x800` 逻辑像素，并在启动后通过 CDP 强制覆盖持久 profile 保存的窗口位置；高 DPI 屏幕上物理像素会按系统缩放放大。需要调整时设置 `CHATGPT_BROWSER_VIEWPORT=宽x高`，例如 `CHATGPT_BROWSER_VIEWPORT=1200x760`；需要调整初始位置时设置 `CHATGPT_BROWSER_WINDOW_POSITION=left,top`。
+
 ## Diagnostic replay lane
 
 Storage replay is now diagnostic-only:

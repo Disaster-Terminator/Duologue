@@ -13,8 +13,10 @@ import {
   ensureOverlay,
   getExtensionId,
   probeChatGptAuthState,
+  forceBrowserWindowBounds,
   readFlag,
   readPathFlag,
+  resolveBrowserViewport,
   waitForExtensionServiceWorkers
 } from "./_playwright-bridge-helpers.mjs";
 
@@ -28,6 +30,7 @@ const PROFILE_DIR =
   process.env.CLOAKBROWSER_PROFILE_DIR ||
   path.resolve(process.env.HOME || process.cwd(), ".chatgpt-cloakbrowser-profile");
 const FINGERPRINT_SEED = process.env.CLOAKBROWSER_FINGERPRINT_SEED || "76421";
+const VIEWPORT = resolveBrowserViewport();
 const INTERACTIVE = process.argv.includes("--interactive");
 
 function log(message) {
@@ -40,12 +43,14 @@ async function waitForManualLogin() {
 }
 
 async function launchCloakProfile() {
-  return await launchPersistentContext({
+  const context = await launchPersistentContext({
     userDataDir: PROFILE_DIR,
     headless: false,
+    viewport: VIEWPORT,
     args: [
       `--fingerprint=${FINGERPRINT_SEED}`,
       "--fingerprint-platform=windows",
+      `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
       `--disable-extensions-except=${EXTENSION_PATH}`,
       `--load-extension=${EXTENSION_PATH}`,
       "--no-first-run",
@@ -54,6 +59,8 @@ async function launchCloakProfile() {
       "--enable-unsafe-extension-debugging"
     ]
   });
+  await forceBrowserWindowBounds(context, VIEWPORT);
+  return context;
 }
 
 async function openAndProbe(context) {

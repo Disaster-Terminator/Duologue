@@ -38,6 +38,7 @@ import {
   getRuntimeState,
   readPopupState,
   isExpectedPendingBoundaryVisible,
+  parseDisplayRound,
   collectThreadObservation,
   ensureAnonymousSourceSeedWithBlocker,
   ensureAuthBackedSourceSeedWithBlocker,
@@ -422,7 +423,7 @@ async function resumeBranch({ pageA, pageB, popupPage, overrideRole = null, expe
     `Expected popup next hop ${expectedSourceRole} -> ${expectedTargetRole} before resume, got ${JSON.stringify(popupBeforeResume)}`
   );
 
-  const roundBeforeResume = Number(await popupPage.locator("#roundValue").innerText());
+  const roundBeforeResume = parseDisplayRound(await popupPage.locator("#roundValue").innerText());
   await expectPopupActionEnabled(popupPage, "resume");
   await clickPopupAction(popupPage, "resume");
   await expectPopupPhaseState(popupPage, "running");
@@ -442,7 +443,7 @@ async function reachPendingBtoABoundary({ pageA, pageB, popupPage }) {
   assert.ok(readyState.bindings?.B, "Expected runtime binding for B before branch start");
   assert.equal(readyState.phase, "ready", `Expected runtime ready before branch start, got ${JSON.stringify(readyState)}`);
 
-  const roundBeforeStart = Number(await popupPage.locator("#roundValue").innerText());
+  const roundBeforeStart = parseDisplayRound(await popupPage.locator("#roundValue").innerText());
   const baselineBStart = await collectThreadObservation(pageB);
   await expectPopupActionEnabled(popupPage, "start");
   await clickPopupAction(popupPage, "start");

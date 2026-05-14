@@ -31,6 +31,66 @@ export const DEFAULT_PLAYWRIGHT_PROFILE_DIR = path.resolve(
   ".chatgpt-playwright-profile"
 );
 
+export const DEFAULT_CLOAKBROWSER_PROFILE_DIR = path.resolve(
+  process.env.HOME || process.cwd(),
+  ".chatgpt-cloakbrowser-profile"
+);
+
+export const DEFAULT_BROWSER_VIEWPORT = {
+  width: 1280,
+  height: 800
+};
+
+export const DEFAULT_BROWSER_WINDOW_POSITION = {
+  left: 80,
+  top: 80
+};
+
+export function resolveBrowserViewport() {
+  const raw = process.env.CHATGPT_BROWSER_VIEWPORT || process.env.CLOAKBROWSER_VIEWPORT || "";
+  const match = raw.match(/^(\d{3,5})x(\d{3,5})$/i);
+  if (!match) {
+    return { ...DEFAULT_BROWSER_VIEWPORT };
+  }
+
+  return {
+    width: Number(match[1]),
+    height: Number(match[2])
+  };
+}
+
+export function resolveBrowserWindowBounds(viewport = resolveBrowserViewport()) {
+  const rawPosition = process.env.CHATGPT_BROWSER_WINDOW_POSITION || "";
+  const positionMatch = rawPosition.match(/^(-?\d{1,5}),(-?\d{1,5})$/);
+  const position = positionMatch
+    ? {
+      left: Number(positionMatch[1]),
+      top: Number(positionMatch[2])
+    }
+    : DEFAULT_BROWSER_WINDOW_POSITION;
+
+  return {
+    ...position,
+    width: viewport.width,
+    height: viewport.height
+  };
+}
+
+export async function forceBrowserWindowBounds(context, viewport) {
+  const page = context.pages()[0] || await context.newPage();
+  try {
+    const session = await context.newCDPSession(page);
+    const { windowId } = await session.send("Browser.getWindowForTarget");
+    await session.send("Browser.setWindowBounds", {
+      windowId,
+      bounds: resolveBrowserWindowBounds(viewport)
+    });
+    await session.detach();
+  } catch (error) {
+    console.warn("[e2e] Browser window bounds override failed:", error?.message || error);
+  }
+}
+
 /**
  * Resolve browser connection strategy from CLI/env.
  * Persistent Playwright profiles are the primary path; CDP attach remains the
@@ -167,15 +227,58 @@ export async function launchBrowserWithExtension(options = {}) {
   const browserExecutablePath = options.browserExecutablePath || null;
   const storageStatePath = options.storageStatePath || null;
   const sessionStorageData = options.sessionStorageData || null;
-  const persistentProfileDir = options.userDataDir || process.env.CHATGPT_PLAYWRIGHT_PROFILE_DIR || null;
+  const browserCarrier = String(
+    options.browserCarrier || process.env.CHATGPT_BROWSER_CARRIER || "playwright"
+  ).toLowerCase();
+  const viewport = options.viewport || resolveBrowserViewport();
+  const persistentProfileDir =
+    options.userDataDir ||
+    (browserCarrier === "cloakbrowser"
+      ? process.env.CLOAKBROWSER_PROFILE_DIR || DEFAULT_CLOAKBROWSER_PROFILE_DIR
+      : process.env.CHATGPT_PLAYWRIGHT_PROFILE_DIR || null);
   const shouldCleanupUserDataDir = !persistentProfileDir;
   const usePlaywrightChromiumChannel = !browserExecutablePath;
 
   const userDataDir = persistentProfileDir || await mkdtemp(path.join(os.tmpdir(), "chatgpt-bridge-e2e-"));
 
+  if (browserCarrier === "cloakbrowser") {
+    const { launchPersistentContext } = await import("cloakbrowser");
+    const fingerprintSeed = process.env.CLOAKBROWSER_FINGERPRINT_SEED || "76421";
+    const context = await launchPersistentContext({
+      userDataDir,
+      headless: false,
+      viewport,
+      args: [
+        `--fingerprint=${fingerprintSeed}`,
+        "--fingerprint-platform=windows",
+        `--window-size=${viewport.width},${viewport.height}`,
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--password-store=basic",
+        "--enable-unsafe-extension-debugging"
+      ]
+    });
+    await forceBrowserWindowBounds(context, viewport);
+
+    return {
+      context,
+      userDataDir,
+      sessionStorageData,
+      shouldCleanupUserDataDir,
+      browserCarrier
+    };
+  }
+
+  if (browserCarrier !== "playwright") {
+    throw new Error(`Unsupported browser carrier: ${browserCarrier}`);
+  }
+
   // Build launch options
   const launchOptions = {
     headless: false,
+    viewport,
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     ...(usePlaywrightChromiumChannel ? { channel: "chromium" } : {}),
     ...(browserExecutablePath ? { executablePath: browserExecutablePath } : {}),
@@ -183,6 +286,7 @@ export async function launchBrowserWithExtension(options = {}) {
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
+      `--window-size=${viewport.width},${viewport.height}`,
       "--no-first-run",
       "--no-default-browser-check",
       "--password-store=basic",
@@ -192,6 +296,7 @@ export async function launchBrowserWithExtension(options = {}) {
   };
 
   const context = await chromium.launchPersistentContext(userDataDir, launchOptions);
+  await forceBrowserWindowBounds(context, viewport);
 
   // Return sessionStorage data for later restoration if needed
   return { context, userDataDir, sessionStorageData, shouldCleanupUserDataDir };
@@ -498,6 +603,16 @@ export function readPathFlag(flagName) {
 
   // Resolve relative paths against cwd, preserve absolute paths
   return path.isAbsolute(value) ? value : path.resolve(process.cwd(), value);
+}
+
+/**
+ * Parse popup/overlay round text such as "3", "3 / 8", or "3 / ∞".
+ * @param {unknown} value
+ * @returns {number}
+ */
+export function parseDisplayRound(value) {
+  const match = String(value ?? "").trim().match(/^\d+/);
+  return match ? Number(match[0]) : 0;
 }
 
 /**

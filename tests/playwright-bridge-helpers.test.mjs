@@ -5,13 +5,63 @@ import {
   classifyExtensionLoadedEvidence,
   classifyChatGptAuthState,
   isChatGptLoginOrAuthUrl,
-  isExpectedPendingBoundaryVisible
+  isExpectedPendingBoundaryVisible,
+  parseDisplayRound,
+  resolveBrowserWindowBounds,
+  resolveBrowserViewport
 } from "../scripts/_playwright-bridge-helpers.mjs";
 
 test("isChatGptLoginOrAuthUrl detects login and auth routes", () => {
   assert.equal(isChatGptLoginOrAuthUrl("https://chatgpt.com/auth/login"), true);
   assert.equal(isChatGptLoginOrAuthUrl("https://auth.openai.com/u/login"), true);
   assert.equal(isChatGptLoginOrAuthUrl("https://chatgpt.com/c/thread-123"), false);
+});
+
+test("parseDisplayRound reads compact and limited round labels", () => {
+  assert.equal(parseDisplayRound("3"), 3);
+  assert.equal(parseDisplayRound("7 / 8"), 7);
+  assert.equal(parseDisplayRound("0 / ∞"), 0);
+  assert.equal(parseDisplayRound(""), 0);
+});
+
+test("resolveBrowserViewport defaults to 1280x800 and parses explicit viewport", () => {
+  const previous = process.env.CHATGPT_BROWSER_VIEWPORT;
+  delete process.env.CHATGPT_BROWSER_VIEWPORT;
+  assert.deepEqual(resolveBrowserViewport(), { width: 1280, height: 800 });
+
+  process.env.CHATGPT_BROWSER_VIEWPORT = "1440x900";
+  assert.deepEqual(resolveBrowserViewport(), { width: 1440, height: 900 });
+
+  if (previous === undefined) {
+    delete process.env.CHATGPT_BROWSER_VIEWPORT;
+  } else {
+    process.env.CHATGPT_BROWSER_VIEWPORT = previous;
+  }
+});
+
+test("resolveBrowserWindowBounds uses viewport dimensions and optional position", () => {
+  const previous = process.env.CHATGPT_BROWSER_WINDOW_POSITION;
+  delete process.env.CHATGPT_BROWSER_WINDOW_POSITION;
+  assert.deepEqual(resolveBrowserWindowBounds({ width: 1200, height: 760 }), {
+    left: 80,
+    top: 80,
+    width: 1200,
+    height: 760
+  });
+
+  process.env.CHATGPT_BROWSER_WINDOW_POSITION = "25,40";
+  assert.deepEqual(resolveBrowserWindowBounds({ width: 960, height: 620 }), {
+    left: 25,
+    top: 40,
+    width: 960,
+    height: 620
+  });
+
+  if (previous === undefined) {
+    delete process.env.CHATGPT_BROWSER_WINDOW_POSITION;
+  } else {
+    process.env.CHATGPT_BROWSER_WINDOW_POSITION = previous;
+  }
 });
 
 test("classifyChatGptAuthState accepts authenticated account UI", () => {
