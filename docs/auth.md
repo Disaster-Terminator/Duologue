@@ -1,60 +1,25 @@
-# Auth Carrier Modes
+# 认证载体历史记录
 
-## Primary path
+> 当前测试事实源是 `docs/testing.md`。本文件只保留认证与登录态方案的历史判断，避免后续再次走回已经验证过的弯路。
 
-The primary browser-auth carrier for this repo is now:
+## 当前结论
 
-1. use **Playwright Chromium**
-2. keep a fixed **persistent Playwright profile** (`userDataDir`)
-3. load the extension in that profile
-4. log into ChatGPT manually once
-5. close and reopen the same profile for future smoke runs
+ChatGPT Web 的登录态、Cloudflare 风控和浏览器指纹策略会影响自动化稳定性。仓库当前不再把导出的 `storageState` 当作默认认证基线。
 
-Why this is primary:
+当前优先级：
 
-- it preserves the full browser profile that Playwright persistent contexts are designed to reuse
-- it supports extension loading directly
-- it avoids relying on `storageState` as a persistent-context initializer, which is not a trustworthy baseline here
+1. CloakBrowser 持久 profile：当前可用于 smoke 和 happy-path e2e。
+2. Playwright 持久 profile：保留为基础 smoke 通道。
+3. CDP attach：备用诊断通道。
+4. Storage replay：仅诊断，不作为主路径。
 
-Primary commands:
+具体命令、前置条件和解释以 `docs/testing.md` 为准。
 
-```bash
-pnpm run auth:bootstrap-profile
-pnpm run test:smoke
-```
+## 已降级的路线
 
-`auth:bootstrap-profile` is the one-time bootstrap lane for manual login in the persistent Playwright profile.
+### Storage replay
 
-`test:smoke` is the repeatable infrastructure gate and answers only:
-
-1. is ChatGPT still logged in?
-2. is the extension loaded?
-3. is the page testable?
-
-Only when all three are true should later business-regression lanes resume.
-
-## Fallback path
-
-Fallback carrier for this repo is:
-
-1. keep a **persistent real browser profile**
-2. log in manually once
-3. keep that profile on disk
-4. attach Playwright over **CDP**
-5. verify only the same minimal infrastructure contract
-
-Commands:
-
-```bash
-pnpm run browser:cdp-launch
-CHATGPT_CDP_ENDPOINT=http://127.0.0.1:9333 pnpm run test:cdp-smoke
-```
-
-Use this path when the Playwright persistent profile lane is unsuitable or fails to hold login.
-
-## Diagnostic-only paths
-
-These commands remain useful, but they are **diagnostic only** and are not the default auth carrier story:
+这些命令仍然有诊断价值：
 
 ```bash
 pnpm run auth:export
@@ -63,35 +28,33 @@ pnpm run test:storage-auth-smoke
 CHATGPT_CDP_ENDPOINT=http://127.0.0.1:9333 pnpm run auth:export:cdp-storage
 ```
 
-They help answer questions like:
+但它们只回答“导出的 cookie / origin / session 材料在某个诊断上下文里是否可用”，不能证明真实 ChatGPT Web e2e 载体可靠。
 
-- what cookies/origins/session material were exported?
-- does replay work in a clean context?
-- what is missing from replay compared with a real persistent profile?
+保留原因：
 
-They do **not** define the primary carrier.
+- 对比持久 profile 与导出状态时仍有用。
+- 可以解释某次登录态丢失是 cookie、sessionStorage、origin 权限还是页面风控问题。
+- 作为历史失败路线留档，避免误把 replay 当成默认方案。
 
-## Why `storageState` is not primary
+### 旧 auth-backed 业务脚本
 
-This repo now assumes the following external constraints are real:
+这些脚本仍在 `package.json` 中保留，主要用于兼容和调查：
 
-- Playwright issue `#31129`: extension loading and `storageState` replay are not a trustworthy combined baseline
-- Playwright issue `#7634`: persistent-context initialization from `storageState` has long been a feature gap
-- Playwright issue `#14949`: setting storage/session state for persistent context remains an unresolved problem area
+```bash
+pnpm run auth:export:legacy
+pnpm run test:real-hop:auth
+pnpm run test:semi:auth
+pnpm run test:e2e:auth
+```
 
-Repo-local evidence also showed:
+它们不是当前推荐的验收入口。运行前先确认 `docs/testing.md` 中的基础 smoke 已通过。
 
-- extension load is proven
-- current `storageState` replay is **not** proven
-- the same exported auth material failed even in plain `browser.newContext({ storageState })`
+## Playwright 相关历史约束
 
-So exported JSON replay is retained for diagnostics, not promoted as the main carrier.
+早期调查中，`storageState` 与 persistent context / extension loading 的组合不适合作为本项目主路径。相关外部限制包括：
 
-## Legacy compatibility
+- persistent context 不能可靠地从 `storageState` 初始化完整浏览器登录态。
+- extension loading 与 storage replay 组合后，不能代表真实用户 profile 的行为。
+- ChatGPT Web 对 replay 出来的状态更容易出现恢复失败、挑战或半登录态。
 
-These scripts still exist for compatibility/investigation and should not be read as primary guidance:
-
-- `pnpm run auth:export:legacy`
-- `pnpm run test:real-hop:auth`
-- `pnpm run test:semi:auth`
-- `pnpm run test:e2e:auth`
+因此，当前文档把持久 profile 和真实浏览器载体放在前面，把 storage replay 保留为诊断工具。

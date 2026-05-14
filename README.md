@@ -69,25 +69,36 @@ https://chatgpt.com/g/<project-id>/c/<conversation-id>
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 获取扩展产物
+
+推荐优先使用 GitHub Actions 产物：
+
+- `chatgpt-tab-bridge-extension`：可直接加载的 `dist/extension` 目录
+- `chatgpt-tab-bridge-extension-zip`：同一目录的 zip 包
+
+如果你从源码构建，则继续执行下面的步骤。
+
+### 2. 安装依赖
 
 ```bash
 pnpm install
 ```
 
-### 2. 构建扩展
+### 3. 构建扩展
 
 ```bash
 pnpm run build
 ```
 
-构建产物会输出到：
+构建产物会输出到并提交在：
 
 ```text
 dist/extension
 ```
 
-### 3. 加载到浏览器
+`dist/extension` 是当前仓库的扩展发布目录，不是可以随意忽略的临时构建缓存。CI 会检查源码构建结果与这个目录一致。
+
+### 4. 加载到浏览器
 
 当前推荐使用 Microsoft Edge 或其他 Chromium 系浏览器，以“已解压扩展”的方式加载。
 
@@ -98,7 +109,7 @@ dist/extension
 3. 点击“加载已解压的扩展”
 4. 选择 `dist/extension`
 
-### 4. 打开并绑定两个 ChatGPT 页面
+### 5. 打开并绑定两个 ChatGPT 页面
 
 手动打开两个要参与 relay 的 ChatGPT 页面，然后通过页内悬浮窗分别绑定为：
 
@@ -107,7 +118,7 @@ dist/extension
 
 建议两个页面不要指向同一个线程，并确保页面处于可输入、可发送的状态。
 
-### 5. 启动 relay
+### 6. 启动 relay
 
 选择 `A` 或 `B` 作为 starter，然后点击 `Start`。
 
@@ -175,7 +186,10 @@ Popup 更偏向全局总览、设置和调试。
 pnpm run build
 pnpm run typecheck
 pnpm test
+pnpm run check
 ```
+
+开发和 CI 使用 Node.js 24 与 pnpm 10.33.2。`pnpm run check` 是本地提交前的默认质量门，会执行类型检查、单元测试、扩展构建和 `dist/extension` 一致性检查。
 
 本地调试运行时行为时，先启动日志服务器：
 
@@ -194,8 +208,7 @@ pnpm run test:semi
 pnpm run test:e2e
 ```
 
-认证、CDP、存储状态导出等更细的调试命令可以在 `package.json` 里查看。
-更多开发说明见 `docs/development.md`，测试分层见 `docs/testing.md`。
+更多开发说明见 `docs/development.md`，测试分层和登录态载体说明见 `docs/testing.md`。旧的认证实验记录见 `docs/auth.md`，不作为当前测试事实源。
 
 ---
 

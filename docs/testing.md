@@ -18,6 +18,22 @@ pnpm run check
 
 `check:generated` 会先构建扩展，再检查 `dist/extension` 是否与源码构建结果一致。当前策略是提交源码和 `dist/extension`，CI 也会检查两者同步，并上传扩展目录和 zip 作为构建产物。
 
+## 测试矩阵
+
+| 命令 | 用途 | 前置条件 | CI |
+| --- | --- | --- | --- |
+| `pnpm run gate:commit` | 快速代码门，目前是 TypeScript 类型检查 | 已安装依赖 | 否，本地 hook |
+| `pnpm run gate:local` / `pnpm run check` | 本地确定性质量门 | 已安装依赖 | 等价拆分执行 |
+| `pnpm run check:generated` | 构建并校验 `dist/extension` | 已安装依赖 | 是 |
+| `pnpm run test:cloak-smoke` | 验证 CloakBrowser 登录态、扩展加载、页面可控 | 已人工执行 `auth:bootstrap-cloak` | 否 |
+| `pnpm run test:e2e -- --root-only --scenario happy-path` | CloakBrowser happy-path 业务 e2e | 设置 `CHATGPT_BROWSER_CARRIER=cloakbrowser` 和同一持久 profile | 否 |
+| `pnpm run test:smoke` | Playwright 持久 profile 基础 smoke | 已人工执行 `auth:bootstrap-profile` | 否 |
+| `pnpm run test:cdp-smoke` | CDP attach 基础 smoke | 已启动 `browser:cdp-launch` 并保持浏览器打开 | 否 |
+| `pnpm run test:storage-auth-smoke` | storage replay 诊断 | 已执行 `auth:export` / `auth:verify` | 否 |
+| `pnpm run test:real-hop` / `pnpm run test:semi` | 更接近真实业务的手动/半自动通道 | 先让对应 smoke 通过 | 否 |
+
+CI 只跑可确定复现、不依赖 ChatGPT 登录态和外部风控状态的门控。真实浏览器链路由人工或显式本地命令触发。
+
 ## 调试日志
 
 手动测试、半自动测试和 e2e 前，建议保持日志服务器运行：

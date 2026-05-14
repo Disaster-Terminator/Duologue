@@ -69,25 +69,36 @@ The current implementation can also handle some live sessions that have not yet 
 
 ## Quick start
 
-### 1. Install dependencies
+### 1. Get the extension artifact
+
+Prefer the GitHub Actions artifact when available:
+
+- `chatgpt-tab-bridge-extension`: the loadable `dist/extension` directory
+- `chatgpt-tab-bridge-extension-zip`: the same directory as a zip archive
+
+If you build from source, continue with the steps below.
+
+### 2. Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. Build the extension
+### 3. Build the extension
 
 ```bash
 pnpm run build
 ```
 
-The build output is written to:
+The build output is written to and committed at:
 
 ```text
 dist/extension
 ```
 
-### 3. Load it in the browser
+`dist/extension` is the current extension distribution directory, not disposable build cache. CI checks that it matches the source build output.
+
+### 4. Load it in the browser
 
 Microsoft Edge or another Chromium-based browser is recommended. Load the build output as an unpacked extension.
 
@@ -98,7 +109,7 @@ For Edge:
 3. Click “Load unpacked”
 4. Select `dist/extension`
 
-### 4. Open and bind two ChatGPT pages
+### 5. Open and bind two ChatGPT pages
 
 Open the two ChatGPT pages you want to relay between, then use the in-page floating panel to bind them as:
 
@@ -107,7 +118,7 @@ Open the two ChatGPT pages you want to relay between, then use the in-page float
 
 The two pages should not point to the same thread, and both should be ready for normal input and sending.
 
-### 5. Start relay
+### 6. Start relay
 
 Choose `A` or `B` as the starter, then click `Start`.
 
@@ -175,7 +186,10 @@ These states help identify where relay is currently blocked instead of reducing 
 pnpm run build
 pnpm run typecheck
 pnpm test
+pnpm run check
 ```
+
+Development and CI use Node.js 24 with pnpm 10.33.2. `pnpm run check` is the default local pre-submit gate: typecheck, unit tests, extension build, and `dist/extension` consistency.
 
 Common browser-integration commands:
 
@@ -186,7 +200,7 @@ pnpm run test:semi
 pnpm run test:e2e
 ```
 
-More authentication, CDP, storage-state, and debugging commands are available in `package.json`.
+See `docs/development.md` for development gates and `docs/testing.md` for testing/auth carrier lanes. `docs/auth.md` is retained as historical auth investigation notes and is not the current testing source of truth.
 
 ---
 

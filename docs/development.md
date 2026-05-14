@@ -72,4 +72,4 @@ BRIDGE_DEBUG_LOG_MAX_BYTES=10485760 BRIDGE_DEBUG_LOG_MAX_BACKUPS=5 pnpm run debu
 
 ## 浏览器测试说明
 
-真实 ChatGPT 手动测试仍然是当前更可靠的验收路径。OpenAI 登录态、Cloudflare 挑战和浏览器风控会让完整自动化不稳定。测试分层见 `docs/testing.md`，认证载体说明见 `docs/auth.md`。
+真实 ChatGPT 手动测试仍然是当前更可靠的验收路径。OpenAI 登录态、Cloudflare 挑战和浏览器风控会让完整自动化不稳定。测试分层和当前认证载体说明见 `docs/testing.md`；历史认证尝试记录见 `docs/auth.md`。
