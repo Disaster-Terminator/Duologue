@@ -1,5 +1,5 @@
 /**
- * Shared Playwright helpers for ChatGPT Tab Bridge E2E tests.
+ * Shared Playwright helpers for Duologue E2E tests.
  * Extracted from semi-bridge-playwright.mjs - behavior unchanged.
  */
 

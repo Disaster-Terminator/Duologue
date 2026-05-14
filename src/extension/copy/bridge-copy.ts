@@ -136,7 +136,7 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     idle: "空闲"
   },
   popup: {
-    eyebrow: "ChatGPT 中继",
+    eyebrow: "Duologue",
     title: "设置",
     sectionGlobalStatus: "全局状态",
     sectionSettings: "设置",
@@ -241,7 +241,7 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     idle: "idle"
   },
   popup: {
-    eyebrow: "ChatGPT Bridge",
+    eyebrow: "Duologue",
     title: "Settings",
     sectionGlobalStatus: "Global status",
     sectionSettings: "Settings",

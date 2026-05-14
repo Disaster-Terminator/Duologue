@@ -6,10 +6,10 @@ if [ "${BRIDGE_SKIP_GIT_HOOKS:-}" = "1" ]; then
 fi
 
 if ! command -v pnpm >/dev/null 2>&1; then
-  echo "ChatGPT Tab Bridge pre-push: pnpm is not on PATH; refusing to skip local gate silently." >&2
+  echo "Duologue pre-push: pnpm is not on PATH; refusing to skip local gate silently." >&2
   echo "Install pnpm or set BRIDGE_SKIP_GIT_HOOKS=1 for an explicit local bypass." >&2
   exit 1
 fi
 
-echo "ChatGPT Tab Bridge pre-push: running local deterministic gate..."
+echo "Duologue pre-push: running local deterministic gate..."
 pnpm run gate:local

@@ -45,18 +45,18 @@ jobs:
       - name: Package extension zip
         run: |
           cd dist
-          zip -r ../chatgpt-tab-bridge-extension.zip extension
+          zip -r ../duologue-extension.zip extension
 
       - name: Upload extension directory
         uses: actions/upload-artifact@v6
         with:
-          name: chatgpt-tab-bridge-extension
+          name: duologue-extension
           path: dist/extension
           if-no-files-found: error
 
       - name: Upload extension zip
         uses: actions/upload-artifact@v6
         with:
-          name: chatgpt-tab-bridge-extension-zip
-          path: chatgpt-tab-bridge-extension.zip
+          name: duologue-extension-zip
+          path: duologue-extension.zip
           if-no-files-found: error

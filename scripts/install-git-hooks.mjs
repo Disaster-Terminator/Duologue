@@ -27,4 +27,4 @@ for (const entry of readdirSync(hooksDir)) {
   }
 }
 
-console.log(`ChatGPT Tab Bridge git hooks installed: core.hooksPath=${hooksDir}`);
+console.log(`Duologue git hooks installed: core.hooksPath=${hooksDir}`);

@@ -355,7 +355,7 @@ var zhCN = {
     idle: "\u7A7A\u95F2"
   },
   popup: {
-    eyebrow: "ChatGPT \u4E2D\u7EE7",
+    eyebrow: "Duologue",
     title: "\u8BBE\u7F6E",
     sectionGlobalStatus: "\u5168\u5C40\u72B6\u6001",
     sectionSettings: "\u8BBE\u7F6E",
@@ -459,7 +459,7 @@ var en = {
     idle: "idle"
   },
   popup: {
-    eyebrow: "ChatGPT Bridge",
+    eyebrow: "Duologue",
     title: "Settings",
     sectionGlobalStatus: "Global status",
     sectionSettings: "Settings",
@@ -738,7 +738,7 @@ function wireEvents() {
     void downloadDebugSnapshot();
   });
   elements.openHelpButton.addEventListener("click", () => {
-    window.open("https://github.com/raystorm1/chatgpt-tab-bridge#readme", "_blank");
+    window.open("https://github.com/Disaster-Terminator/Duologue#readme", "_blank");
   });
   elements.overlayEnabledCheckbox.addEventListener("change", () => {
     void perform({
@@ -927,7 +927,7 @@ async function downloadDebugSnapshot() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `chatgpt-tab-bridge-debug-${formatFileTimestamp(/* @__PURE__ */ new Date())}.txt`;
+    link.download = `duologue-debug-${formatFileTimestamp(/* @__PURE__ */ new Date())}.txt`;
     document.body.appendChild(link);
     link.click();
     link.remove();

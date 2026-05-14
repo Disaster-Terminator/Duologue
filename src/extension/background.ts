@@ -699,27 +699,27 @@ async function updateActionBadge(state: RuntimeState): Promise<void> {
 
   let text = "";
   let color = "#52525b";
-  let title = "ChatGPT Bridge";
+  let title = "Duologue";
 
   if (state.phase === PHASES.RUNNING) {
     text = "RUN";
     color = "#0ea5e9";
-    title = `ChatGPT Bridge running: ${state.round}/${state.settings.maxRoundsEnabled ? state.settings.maxRounds : "∞"}`;
+    title = `Duologue running: ${state.round}/${state.settings.maxRoundsEnabled ? state.settings.maxRounds : "∞"}`;
   } else if (state.phase === PHASES.PAUSED) {
     text = "PAU";
     color = "#f59e0b";
-    title = "ChatGPT Bridge paused";
+    title = "Duologue paused";
   } else if (state.phase === PHASES.STOPPED) {
     const cleanStop = cleanStopReasons.has(state.lastStopReason ?? "");
     text = cleanStop ? "OK" : "STOP";
     color = cleanStop ? "#22c55e" : "#71717a";
     title = cleanStop
-      ? `ChatGPT Bridge completed: ${state.lastStopReason ?? "stopped"}`
-      : `ChatGPT Bridge stopped: ${state.lastStopReason ?? "user_stop"}`;
+      ? `Duologue completed: ${state.lastStopReason ?? "stopped"}`
+      : `Duologue stopped: ${state.lastStopReason ?? "user_stop"}`;
   } else if (state.phase === PHASES.ERROR) {
     text = "ERR";
     color = "#ef4444";
-    title = `ChatGPT Bridge error: ${state.lastError ?? "unknown"}`;
+    title = `Duologue error: ${state.lastError ?? "unknown"}`;
   }
 
   await chrome.action.setBadgeText({ text });

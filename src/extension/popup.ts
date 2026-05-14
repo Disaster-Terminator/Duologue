@@ -271,7 +271,7 @@ function wireEvents(): void {
   });
 
   elements.openHelpButton.addEventListener("click", () => {
-    window.open("https://github.com/raystorm1/chatgpt-tab-bridge#readme", "_blank");
+    window.open("https://github.com/Disaster-Terminator/Duologue#readme", "_blank");
   });
 
   elements.overlayEnabledCheckbox.addEventListener("change", () => {
@@ -494,7 +494,7 @@ async function downloadDebugSnapshot(): Promise<void> {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `chatgpt-tab-bridge-debug-${formatFileTimestamp(new Date())}.txt`;
+    link.download = `duologue-debug-${formatFileTimestamp(new Date())}.txt`;
     document.body.appendChild(link);
     link.click();
     link.remove();

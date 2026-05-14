@@ -9,6 +9,13 @@ async function readJson(path) {
 }
 
 for (const manifestPath of ["src/extension/manifest.json", "dist/extension/manifest.json"]) {
+  test(`${manifestPath} uses Duologue as the extension name`, async () => {
+    const manifest = await readJson(manifestPath);
+
+    assert.equal(manifest.name, "Duologue");
+    assert.equal(manifest.action.default_title, "Duologue");
+  });
+
   test(`${manifestPath} injects only on ChatGPT by default`, async () => {
     const manifest = await readJson(manifestPath);
 

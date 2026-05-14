@@ -70,7 +70,7 @@ pnpm run test:cloak-smoke
 
 ```powershell
 $env:CHATGPT_BROWSER_CARRIER = "cloakbrowser"
-$env:CLOAKBROWSER_PROFILE_DIR = "G:\chatgpt-tab-bridge\tmp\cloakbrowser-auth-profile"
+$env:CLOAKBROWSER_PROFILE_DIR = "G:\repository\Duologue\tmp\cloakbrowser-auth-profile"
 pnpm run test:e2e -- --root-only --scenario happy-path
 ```
 

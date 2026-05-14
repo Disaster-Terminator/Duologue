@@ -73,8 +73,8 @@ https://chatgpt.com/g/<project-id>/c/<conversation-id>
 
 推荐优先使用 GitHub Actions 产物：
 
-- `chatgpt-tab-bridge-extension`：可直接加载的 `dist/extension` 目录
-- `chatgpt-tab-bridge-extension-zip`：同一目录的 zip 包
+- `duologue-extension`：可直接加载的 `dist/extension` 目录
+- `duologue-extension-zip`：同一目录的 zip 包
 
 如果你从源码构建，则继续执行下面的步骤。
 

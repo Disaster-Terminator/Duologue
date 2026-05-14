@@ -595,7 +595,7 @@ var zhCN = {
     idle: "\u7A7A\u95F2"
   },
   popup: {
-    eyebrow: "ChatGPT \u4E2D\u7EE7",
+    eyebrow: "Duologue",
     title: "\u8BBE\u7F6E",
     sectionGlobalStatus: "\u5168\u5C40\u72B6\u6001",
     sectionSettings: "\u8BBE\u7F6E",
@@ -699,7 +699,7 @@ var en = {
     idle: "idle"
   },
   popup: {
-    eyebrow: "ChatGPT Bridge",
+    eyebrow: "Duologue",
     title: "Settings",
     sectionGlobalStatus: "Global status",
     sectionSettings: "Settings",

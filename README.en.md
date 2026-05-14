@@ -73,8 +73,8 @@ The current implementation can also handle some live sessions that have not yet 
 
 Prefer the GitHub Actions artifact when available:
 
-- `chatgpt-tab-bridge-extension`: the loadable `dist/extension` directory
-- `chatgpt-tab-bridge-extension-zip`: the same directory as a zip archive
+- `duologue-extension`: the loadable `dist/extension` directory
+- `duologue-extension-zip`: the same directory as a zip archive
 
 If you build from source, continue with the steps below.
 
