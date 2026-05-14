@@ -8,6 +8,13 @@
 pnpm run build
 pnpm run typecheck
 pnpm test
+pnpm run check
+```
+
+`pnpm run check` 是本地提交前的默认质量门：依次执行类型检查、单元测试、扩展构建，并确认 `dist/extension` 与源码构建结果一致。CI 使用同一套语义；如果只想检查已构建产物是否忘记提交，运行：
+
+```bash
+pnpm run verify:dist
 ```
 
 ## 调试日志服务器

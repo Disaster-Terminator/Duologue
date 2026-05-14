@@ -41,7 +41,7 @@ jobs:
         run: pnpm run build
 
       - name: Verify committed extension output
-        run: git diff --exit-code -- dist/extension
+        run: pnpm run verify:dist
 
       - name: Package extension zip
         run: |
