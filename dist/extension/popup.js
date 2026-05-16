@@ -790,6 +790,20 @@ function wireEvents() {
   elements.maxRoundsRange.addEventListener("change", () => {
     void updateMaxRounds(Number(elements.maxRoundsRange.value));
   });
+  elements.maxRoundsValue.addEventListener("input", () => {
+    const parsed = Number(elements.maxRoundsValue.value);
+    if (Number.isFinite(parsed)) {
+      elements.maxRoundsRange.value = String(clampMaxRounds(parsed));
+    }
+  });
+  elements.maxRoundsValue.addEventListener("change", () => {
+    void updateMaxRounds(Number(elements.maxRoundsValue.value));
+  });
+  elements.maxRoundsValue.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      elements.maxRoundsValue.blur();
+    }
+  });
   elements.maxRoundsEnabledCheckbox.addEventListener("change", () => {
     void perform({
       type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
@@ -885,6 +899,7 @@ function render(model) {
   elements.starterSelect.disabled = !controls.canSetStarter;
   elements.overrideSelect.disabled = !controls.canSetOverride;
   elements.maxRoundsRange.disabled = !controls.canSetSettings;
+  elements.maxRoundsValue.disabled = !controls.canSetSettings || !state.settings.maxRoundsEnabled;
   elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
   elements.decreaseMaxRoundsButton.disabled = !controls.canSetSettings || !state.settings.maxRoundsEnabled || state.settings.maxRounds <= MIN_MAX_ROUNDS;
   elements.increaseMaxRoundsButton.disabled = !controls.canSetSettings || !state.settings.maxRoundsEnabled || state.settings.maxRounds >= MAX_MAX_ROUNDS;
@@ -1127,6 +1142,7 @@ async function updateMaxRounds(value) {
 function setMaxRoundsControl(value, enabled) {
   const maxRounds = clampMaxRounds(value);
   elements.maxRoundsRange.value = String(maxRounds);
+  elements.maxRoundsValue.value = String(maxRounds);
   elements.maxRoundsEnabledCheckbox.checked = enabled;
   elements.maxRoundsRange.closest(".popup__round-control")?.setAttribute(
     "data-unlimited",
@@ -1135,7 +1151,8 @@ function setMaxRoundsControl(value, enabled) {
   renderMaxRoundsValue(maxRounds, enabled);
 }
 function renderMaxRoundsValue(value, enabled = elements.maxRoundsEnabledCheckbox.checked) {
-  elements.maxRoundsValue.textContent = enabled ? String(clampMaxRounds(value)) : "\u221E";
+  elements.maxRoundsValue.value = enabled ? String(clampMaxRounds(value)) : "";
+  elements.maxRoundsValue.placeholder = enabled ? "" : "\u221E";
 }
 function clampMaxRounds(value) {
   if (!Number.isFinite(value)) {

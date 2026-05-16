@@ -48,7 +48,7 @@ interface PopupElements {
   bindingB: HTMLElement;
   localeSelect: HTMLSelectElement;
   maxRoundsRange: HTMLInputElement;
-  maxRoundsValue: HTMLElement;
+  maxRoundsValue: HTMLInputElement;
   maxRoundsEnabledCheckbox: HTMLInputElement;
   decreaseMaxRoundsButton: HTMLButtonElement;
   increaseMaxRoundsButton: HTMLButtonElement;
@@ -121,7 +121,7 @@ const elements: PopupElements = {
   bindingB: requireElement<HTMLElement>("#bindingB"),
   localeSelect: requireElement<HTMLSelectElement>("#localeSelect"),
   maxRoundsRange: requireElement<HTMLInputElement>("#maxRoundsRange"),
-  maxRoundsValue: requireElement<HTMLElement>("#maxRoundsValue"),
+  maxRoundsValue: requireElement<HTMLInputElement>("#maxRoundsValue"),
   maxRoundsEnabledCheckbox: requireElement<HTMLInputElement>("#maxRoundsEnabledCheckbox"),
   decreaseMaxRoundsButton: requireElement<HTMLButtonElement>("#decreaseMaxRoundsButton"),
   increaseMaxRoundsButton: requireElement<HTMLButtonElement>("#increaseMaxRoundsButton"),
@@ -319,6 +319,23 @@ function wireEvents(): void {
     void updateMaxRounds(Number(elements.maxRoundsRange.value));
   });
 
+  elements.maxRoundsValue.addEventListener("input", () => {
+    const parsed = Number(elements.maxRoundsValue.value);
+    if (Number.isFinite(parsed)) {
+      elements.maxRoundsRange.value = String(clampMaxRounds(parsed));
+    }
+  });
+
+  elements.maxRoundsValue.addEventListener("change", () => {
+    void updateMaxRounds(Number(elements.maxRoundsValue.value));
+  });
+
+  elements.maxRoundsValue.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      elements.maxRoundsValue.blur();
+    }
+  });
+
   elements.maxRoundsEnabledCheckbox.addEventListener("change", () => {
     void perform({
       type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
@@ -430,6 +447,7 @@ function render(model: PopupModel): void {
   elements.starterSelect.disabled = !controls.canSetStarter;
   elements.overrideSelect.disabled = !controls.canSetOverride;
   elements.maxRoundsRange.disabled = !controls.canSetSettings;
+  elements.maxRoundsValue.disabled = !controls.canSetSettings || !state.settings.maxRoundsEnabled;
   elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
   elements.decreaseMaxRoundsButton.disabled =
     !controls.canSetSettings || !state.settings.maxRoundsEnabled || state.settings.maxRounds <= MIN_MAX_ROUNDS;
@@ -730,6 +748,7 @@ async function updateMaxRounds(value: number): Promise<void> {
 function setMaxRoundsControl(value: number, enabled: boolean): void {
   const maxRounds = clampMaxRounds(value);
   elements.maxRoundsRange.value = String(maxRounds);
+  elements.maxRoundsValue.value = String(maxRounds);
   elements.maxRoundsEnabledCheckbox.checked = enabled;
   elements.maxRoundsRange.closest<HTMLElement>(".popup__round-control")?.setAttribute(
     "data-unlimited",
@@ -739,7 +758,8 @@ function setMaxRoundsControl(value: number, enabled: boolean): void {
 }
 
 function renderMaxRoundsValue(value: number, enabled = elements.maxRoundsEnabledCheckbox.checked): void {
-  elements.maxRoundsValue.textContent = enabled ? String(clampMaxRounds(value)) : "∞";
+  elements.maxRoundsValue.value = enabled ? String(clampMaxRounds(value)) : "";
+  elements.maxRoundsValue.placeholder = enabled ? "" : "∞";
 }
 
 function clampMaxRounds(value: number): number {
