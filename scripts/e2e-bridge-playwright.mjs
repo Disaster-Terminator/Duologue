@@ -10,6 +10,7 @@ import path from "node:path";
 import process from "node:process";
 import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 import {
   connectBrowserWithExtensionOrCdp,
@@ -83,6 +84,9 @@ const TASK9_SCENARIOS = new Set([
   "continuation-without-focus-switch",
   "task9-suite"
 ]);
+const LOCAL_SCENARIOS = new Set([
+  "protocol-literals-roundtrip"
+]);
 
 // Auth state options
 const authStateArg = readFlag("--auth-state");
@@ -126,6 +130,7 @@ if (authOptions.useAuth) {
 // Scenario registry - each receives env and returns { success: true } or throws
 const scenarios = {
   "happy-path": runHappyPath,
+  "protocol-literals-roundtrip": runProtocolLiteralsRoundtrip,
   "starter-busy-before-start": runStarterBusyBeforeStart,
   "starter-busy-before-resume": runStarterBusyBeforeResume,
   "popup-overlay-sync": runPopupOverlaySync,
@@ -1147,11 +1152,13 @@ async function runScenario(name, scenarioFn) {
   let env = null;
 
   try {
-    // Runner creates the environment
-    env = await createEnv(name);
+    if (!LOCAL_SCENARIOS.has(name)) {
+      // Runner creates the environment for browser-backed scenarios.
+      env = await createEnv(name);
+    }
     
     // Run scenario with env - scenario does NOT create/cleanup browser
-    await scenarioFn(env);
+    await scenarioFn(env ?? { diagnosticsDir, scenarioName: name });
     
     // Success path
      await fs.writeFile(diagPath, `PASS\nScenario: ${name}\n`, "utf8").catch(() => {});
@@ -1743,6 +1750,129 @@ async function runPopupOverlaySync(env) {
   return { success: true };
 }
 
+async function runProtocolLiteralsRoundtrip({ diagnosticsDir }) {
+  const bridgeDebugDir = path.join(diagnosticsDir, "bridge-debug");
+  await fs.mkdir(bridgeDebugDir, { recursive: true });
+
+  const relayCoreUrl = await resolveExtensionModuleUrl("core/relay-core", [".js", ".mjs", ".ts"]);
+  const { buildRelayEnvelope, sanitizeRelayContent } = await import(relayCoreUrl);
+
+  const preservedSourceContent = [
+    "正文讨论 [BRIDGE_STATE] CONTINUE 应该作为内容保留。",
+    "",
+    "> [BRIDGE_STATE] FREEZE",
+    "",
+    "```text",
+    "[BRIDGE_META hop=fixture-in-code]",
+    "这段是代码块里的协议字面量，不是结构元数据。",
+    "```",
+    "",
+    "普通结尾，确保协议字面量不是最后一行控制信号。"
+  ].join("\n");
+
+  const previousHopId = "protocol-literals-r1-old";
+  const currentHopId = "protocol-literals-r2-current";
+  const previousPayload = buildRelayEnvelope({
+    sourceRole: "A",
+    round: 1,
+    message: preservedSourceContent,
+    hopId: previousHopId
+  });
+  const finalPayload = buildRelayEnvelope({
+    sourceRole: "B",
+    round: 2,
+    message: previousPayload,
+    hopId: currentHopId
+  });
+  const sanitizedFinalPayload = sanitizeRelayContent(finalPayload);
+
+  const currentMetaMatches = finalPayload.match(new RegExp(`\\[BRIDGE_META hop=${currentHopId}\\]`, "g")) ?? [];
+  const instructionMatches = finalPayload.match(/\[BRIDGE_INSTRUCTION\]/g) ?? [];
+  const structuralTail = finalPayload.slice(preservedSourceContent.length);
+
+  assert.equal(
+    sanitizeRelayContent(previousPayload),
+    preservedSourceContent,
+    "Expected previous-hop structural bridge blocks to sanitize back to source content"
+  );
+  assert.equal(
+    sanitizedFinalPayload,
+    preservedSourceContent,
+    "Expected final payload to preserve prose, blockquote, and code-fenced protocol literals as content"
+  );
+  assert.equal(
+    finalPayload.includes(`[BRIDGE_META hop=${previousHopId}]`),
+    false,
+    "Expected previous-hop metadata to be absent from the next relay payload"
+  );
+  assert.equal(
+    currentMetaMatches.length,
+    1,
+    "Expected current-hop bridge metadata to be appended exactly once"
+  );
+  assert.equal(
+    instructionMatches.length,
+    1,
+    "Expected current-hop bridge instruction marker to be appended exactly once"
+  );
+  assert.ok(
+    structuralTail.startsWith(`\n\n[BRIDGE_META hop=${currentHopId}]\n\n[BRIDGE_INSTRUCTION]`),
+    "Expected final payload structural tail to start with current-hop metadata and instruction"
+  );
+  assert.ok(
+    finalPayload.includes("> [BRIDGE_STATE] FREEZE"),
+    "Expected blockquoted protocol literal to remain content"
+  );
+  assert.ok(
+    finalPayload.includes("[BRIDGE_META hop=fixture-in-code]"),
+    "Expected code-fenced protocol literal to remain content"
+  );
+
+  const evidence = {
+    scenario: "protocol-literals-roundtrip",
+    previousHopId,
+    currentHopId,
+    checks: {
+      previousStructuralBlocksRemoved: !finalPayload.includes(`[BRIDGE_META hop=${previousHopId}]`),
+      currentMetadataCount: currentMetaMatches.length,
+      currentInstructionMarkerCount: instructionMatches.length,
+      preservedContentRoundtrip: sanitizedFinalPayload === preservedSourceContent,
+      proseLiteralPreserved: finalPayload.includes("[BRIDGE_STATE] CONTINUE 应该作为内容保留"),
+      blockquoteLiteralPreserved: finalPayload.includes("> [BRIDGE_STATE] FREEZE"),
+      codeFenceLiteralPreserved: finalPayload.includes("[BRIDGE_META hop=fixture-in-code]")
+    },
+    finalRelayedPayloadSample: finalPayload
+  };
+  await fs.writeFile(
+    path.join(bridgeDebugDir, "protocol-literals-roundtrip.json"),
+    JSON.stringify(evidence, null, 2),
+    "utf8"
+  );
+
+  return { success: true };
+}
+
+async function resolveExtensionModuleUrl(moduleStem, extensions) {
+  const roots = [
+    extensionPath,
+    path.resolve(process.cwd(), "src", "extension")
+  ];
+
+  for (const root of roots) {
+    for (const extension of extensions) {
+      const candidate = path.join(root, `${moduleStem}${extension}`);
+      try {
+        await fs.access(candidate);
+        return pathToFileURL(candidate).href;
+      } catch {
+        // Try next candidate.
+      }
+    }
+  }
+
+  throw new Error(`Unable to resolve extension module: ${moduleStem}`);
+}
+
 async function waitForPopupOverlayNextHop({ popupPage, overlayPage, expectedNextHop, timeoutMs = 30000 }) {
   const startedAt = Date.now();
   let lastState = "not_checked";
@@ -2083,6 +2213,11 @@ const scenarioNames = scenarioFilter
   for (const name of scenarioNames) {
     if (!scenarios[name]) {
       console.error(`Unknown scenario: ${name}`);
+      results.push({
+        name,
+        status: "FAIL",
+        diagnostics: "unknown scenario"
+      });
       continue;
     }
 

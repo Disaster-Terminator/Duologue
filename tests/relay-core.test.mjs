@@ -196,6 +196,44 @@ test("buildRelayEnvelope does not accumulate prior bridge control blocks", () =>
   assert.ok(next.startsWith("first reply\n\n[BRIDGE_META hop=s1-r2-new]"));
 });
 
+test("protocol-literals-roundtrip preserves content literals while replacing structural bridge metadata", () => {
+  const preservedSourceContent = [
+    "正文讨论 [BRIDGE_STATE] CONTINUE 应该作为内容保留。",
+    "",
+    "> [BRIDGE_STATE] FREEZE",
+    "",
+    "```text",
+    "[BRIDGE_META hop=fixture-in-code]",
+    "这段是代码块里的协议字面量，不是结构元数据。",
+    "```",
+    "",
+    "普通结尾，确保协议字面量不是最后一行控制信号。"
+  ].join("\n");
+  const previousHopId = "protocol-literals-r1-old";
+  const currentHopId = "protocol-literals-r2-current";
+  const previous = buildRelayEnvelope({
+    sourceRole: "A",
+    round: 1,
+    message: preservedSourceContent,
+    hopId: previousHopId
+  });
+  const next = buildRelayEnvelope({
+    sourceRole: "B",
+    round: 2,
+    message: previous,
+    hopId: currentHopId
+  });
+
+  assert.equal(sanitizeRelayContent(previous), preservedSourceContent);
+  assert.equal(sanitizeRelayContent(next), preservedSourceContent);
+  assert.equal(next.includes(`[BRIDGE_META hop=${previousHopId}]`), false);
+  assert.equal(next.match(new RegExp(`\\[BRIDGE_META hop=${currentHopId}\\]`, "g"))?.length, 1);
+  assert.equal(next.match(/\[BRIDGE_INSTRUCTION\]/g)?.length, 1);
+  assert.ok(next.includes("> [BRIDGE_STATE] FREEZE"));
+  assert.ok(next.includes("[BRIDGE_META hop=fixture-in-code]"));
+  assert.ok(next.startsWith(`${preservedSourceContent}\n\n[BRIDGE_META hop=${currentHopId}]`));
+});
+
 test("buildRelayEnvelope plain mode sends content without visible bridge controls", () => {
   const message = [
     "这段讨论正在审查 Duologue 的 bridge tail 污染问题。",
