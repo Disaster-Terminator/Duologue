@@ -2260,12 +2260,18 @@ export async function waitForSettledReply({
   let stableCount = 0;
   let pendingObservationFailure: ReplyObservationFailureReason | null = null;
   let pendingReplyStallReason: StopReason | null = null;
+  let latestObservedGenerating = false;
+  let pollsSinceProgress = 0;
 
   while (true) {
     const now = Date.now();
     elapsedMs = now - startedAt;
     idleMs = now - lastProgressAt;
-    if (idleMs >= settings.hopTimeoutMs) {
+    const timeoutLimitMs = latestObservedGenerating
+      ? Math.max(settings.hopTimeoutMs, settings.hopTimeoutMs * 3)
+      : settings.hopTimeoutMs;
+    const timeoutPollLimit = Math.ceil(timeoutLimitMs / Math.max(settings.pollIntervalMs, 1)) + 2;
+    if (idleMs >= timeoutLimitMs || pollsSinceProgress >= timeoutPollLimit) {
       break;
     }
 
@@ -2277,6 +2283,7 @@ export async function waitForSettledReply({
     }
 
     await sleep(settings.pollIntervalMs);
+    pollsSinceProgress += 1;
     const tabLifecycle = await readTabLifecycleFacts(canonicalTargetTabId);
     const observation = classifyTargetObservation({
       requestedTabId: tabId,
@@ -2308,6 +2315,7 @@ export async function waitForSettledReply({
     }
 
     const latestAssistant = observation.sample.latestAssistant;
+    latestObservedGenerating = observation.sample.generating === true;
     if (!latestAssistant.present || !latestAssistant.text || !latestAssistant.hash) {
       pendingObservationFailure = STOP_REASONS.REPLY_OBSERVATION_MISSING;
       pendingReplyStallReason = null;
@@ -2342,6 +2350,7 @@ export async function waitForSettledReply({
       lastObservedAssistantHash = currentHash;
       pendingReplyStallReason = null;
       lastProgressAt = Date.now();
+      pollsSinceProgress = 0;
       idleMs = 0;
     }
 

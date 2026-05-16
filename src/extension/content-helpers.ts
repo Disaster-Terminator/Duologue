@@ -8,6 +8,17 @@ export function normalizeText(value: unknown): string {
   return String(value || "").replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").trim();
 }
 
+export function readMessageText(element: Element | null | undefined): string {
+  if (!element) {
+    return "";
+  }
+
+  const renderedText = typeof (element as HTMLElement).innerText === "string"
+    ? (element as HTMLElement).innerText
+    : "";
+  return normalizeText(renderedText || element.textContent || "");
+}
+
 export function hashText(value: unknown): string {
   const text = normalizeText(value);
   let hash = 2166136261;
@@ -161,7 +172,7 @@ function findLatestMessageElementFromRoot(root: ParentNode, role: "user" | "assi
     Array.from(root.querySelectorAll?.(selector) ?? [])
   );
   const uniqueCandidates = Array.from(new Set(candidates)).filter((element) =>
-    normalizeText(element.textContent || "")
+    readMessageText(element)
   );
 
   return uniqueCandidates[uniqueCandidates.length - 1] ?? null;
@@ -189,11 +200,11 @@ export function findLatestUserMessageHash(): string | null {
 
   for (const selector of selectors) {
     const candidates = Array.from(document.querySelectorAll(selector)).filter((element) =>
-      normalizeText(element.textContent || "")
+      readMessageText(element)
     );
     if (candidates.length > 0) {
       const latest = candidates[candidates.length - 1];
-      const text = normalizeText(latest.textContent || "");
+      const text = readMessageText(latest);
       return text ? hashText(text) : null;
     }
   }
@@ -265,11 +276,11 @@ export function findLatestUserMessageText(): string | null {
 
   for (const selector of selectors) {
     const candidates = Array.from(document.querySelectorAll(selector)).filter((element) =>
-      normalizeText(element.textContent || "")
+      readMessageText(element)
     );
     if (candidates.length > 0) {
       const latest = candidates[candidates.length - 1];
-      const text = normalizeText(latest.textContent || "");
+      const text = readMessageText(latest);
       return text || null;
     }
   }

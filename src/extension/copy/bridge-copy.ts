@@ -55,8 +55,6 @@ export interface PopupCopy {
   labelMaxRoundsLimit: string;
   labelMaxRounds: string;
   maxRoundsHelp: string;
-  maxRoundsDecrease: string;
-  maxRoundsIncrease: string;
   roundUnit: string;
   labelOverride: string;
   labelResumeSource: string;
@@ -160,8 +158,6 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     labelMaxRoundsLimit: "轮数限制",
     labelMaxRounds: "桥接轮数",
     maxRoundsHelp: "开启后到达目标轮数自动停止；关闭后显示为 ∞。",
-    maxRoundsDecrease: "减少桥接轮数",
-    maxRoundsIncrease: "增加桥接轮数",
     roundUnit: "轮",
     labelOverride: "暂停时下一跳覆盖",
     labelResumeSource: "恢复从",
@@ -272,8 +268,6 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     labelMaxRoundsLimit: "Round limit",
     labelMaxRounds: "Bridge rounds",
     maxRoundsHelp: "When enabled, stops after the selected count; disabled shows ∞.",
-    maxRoundsDecrease: "Decrease bridge rounds",
-    maxRoundsIncrease: "Increase bridge rounds",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
     labelResumeSource: "Resume from",

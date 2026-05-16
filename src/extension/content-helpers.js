@@ -3,6 +3,15 @@
     return String(value || "").replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").trim();
   }
 
+  function readMessageText(element) {
+    if (!element) {
+      return "";
+    }
+
+    const renderedText = typeof element.innerText === "string" ? element.innerText : "";
+    return normalizeText(renderedText || element.textContent || "");
+  }
+
   function hashText(value) {
     const text = normalizeText(value);
     let hash = 2166136261;
@@ -108,7 +117,7 @@
       Array.from(root.querySelectorAll?.(selector) ?? [])
     );
     const uniqueCandidates = Array.from(new Set(candidates)).filter((element) =>
-      normalizeText(element.textContent || "")
+      readMessageText(element)
     );
 
     return uniqueCandidates[uniqueCandidates.length - 1] ?? null;
@@ -331,6 +340,7 @@
     isReplyGenerationInProgressFromDoc,
     normalizeText,
     readComposerText,
+    readMessageText,
     triggerComposerSend
   };
 })();

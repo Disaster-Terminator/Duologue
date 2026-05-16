@@ -691,7 +691,7 @@ test("waitForSettledReply extends the reply deadline while assistant text keeps 
       token: 86
     });
 
-    assert.equal(settled.ok, true);
+    assert.equal(settled.ok, true, JSON.stringify(settled));
     assert.equal(settled.result.hash, hashText("streaming reply complete"));
     assert.equal(settled.result.sample.generating, false);
     assert.equal(polls, 6);
@@ -1096,14 +1096,17 @@ test("waitForSettledReply does not classify hidden target as no-generation after
   }
 });
 
-test("waitForSettledReply does not let unchanged generating observations suppress hop_timeout", async () => {
+test("waitForSettledReply keeps waiting while unchanged assistant text is still generating", async () => {
   const originalDateNow = Date.now;
   let tick = 0;
   Date.now = () => tick++;
+  let observations = 0;
 
   chromeEnvironment.setSendMessageHandler(async (tabId, message) => {
     assert.equal(message.type, "GET_THREAD_ACTIVITY");
     assert.equal(tabId, 2);
+    observations += 1;
+    const generating = observations < 6;
     return {
       ok: true,
       result: {
@@ -1111,10 +1114,10 @@ test("waitForSettledReply does not let unchanged generating observations suppres
           url: "https://chatgpt.com/c/thread-b",
           latestUserText: "submitted bridge payload",
           latestAssistantText: "unchanged partial assistant",
-          generating: true,
-          replyPending: true
+          generating,
+          replyPending: generating
         }),
-        generating: true,
+        generating,
         latestAssistantHash: hashText("unchanged partial assistant"),
         latestUserHash: hashText("submitted bridge payload"),
         composerText: "",
@@ -1133,7 +1136,7 @@ test("waitForSettledReply does not let unchanged generating observations suppres
       expectedTargetIdentity: { normalizedUrl: "https://chatgpt.com/c/thread-b" },
       settings: {
         maxRounds: 1,
-        hopTimeoutMs: 4,
+        hopTimeoutMs: 1000,
         pollIntervalMs: 0,
         settleSamplesRequired: 2,
         bridgeStatePrefix: "[BRIDGE_STATE]",
@@ -1143,8 +1146,9 @@ test("waitForSettledReply does not let unchanged generating observations suppres
       token: 83
     });
 
-    assert.equal(settled.ok, false);
-    assert.equal(settled.reason, STOP_REASONS.HOP_TIMEOUT);
+    assert.equal(settled.ok, true, JSON.stringify(settled));
+    assert.equal(settled.result.hash, hashText("unchanged partial assistant"));
+    assert.equal(observations >= 6, true);
   } finally {
     Date.now = originalDateNow;
   }

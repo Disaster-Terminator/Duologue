@@ -48,7 +48,7 @@ const stopReasonDescriptions: Record<string, Omit<ReasonDescription, "reason">> 
     title: "单跳超时",
     severity: "warning",
     summary: "某一跳在超时窗口内没有观察到可接受的回复完成信号。",
-    nextAction: "确认目标页仍可响应；必要时刷新页面、开启保活插件，或提高超时时间。"
+    nextAction: "确认目标页仍可响应；如果页面没有继续生成，刷新页面或重新绑定后再试。"
   },
   [STOP_REASONS.TARGET_HIDDEN_NO_GENERATION]: {
     title: "隐藏目标页未开始生成",

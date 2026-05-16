@@ -24,6 +24,26 @@ function createVisibleButton(overrides = {}) {
   };
 }
 
+test("readMessageText prefers rendered innerText over raw textContent", () => {
+  const element = {
+    innerText: "完整正文\n\n```ts\nconst ok = true;\n```",
+    textContent: "完整正文Copy codeconst ok = true;"
+  };
+
+  assert.equal(
+    helpers.readMessageText(element),
+    "完整正文\n\n```ts\nconst ok = true;\n```"
+  );
+});
+
+test("readMessageText falls back to textContent when innerText is unavailable", () => {
+  const element = {
+    textContent: "fallback text"
+  };
+
+  assert.equal(helpers.readMessageText(element), "fallback text");
+});
+
 test("applyComposerText uses value for textarea composers", () => {
   const dispatched = [];
   class FakeTextArea {}

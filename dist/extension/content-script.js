@@ -2,6 +2,13 @@
 function normalizeText(value) {
   return String(value || "").replace(/\r\n/g, "\n").replace(/\u00a0/g, " ").trim();
 }
+function readMessageText(element) {
+  if (!element) {
+    return "";
+  }
+  const renderedText = typeof element.innerText === "string" ? element.innerText : "";
+  return normalizeText(renderedText || element.textContent || "");
+}
 function hashText(value) {
   const text = normalizeText(value);
   let hash = 2166136261;
@@ -113,7 +120,7 @@ function findLatestMessageElementFromRoot(root, role) {
     (selector) => Array.from(root.querySelectorAll?.(selector) ?? [])
   );
   const uniqueCandidates = Array.from(new Set(candidates)).filter(
-    (element) => normalizeText(element.textContent || "")
+    (element) => readMessageText(element)
   );
   return uniqueCandidates[uniqueCandidates.length - 1] ?? null;
 }
@@ -135,11 +142,11 @@ function findLatestUserMessageHash() {
   ];
   for (const selector of selectors) {
     const candidates = Array.from(document.querySelectorAll(selector)).filter(
-      (element) => normalizeText(element.textContent || "")
+      (element) => readMessageText(element)
     );
     if (candidates.length > 0) {
       const latest = candidates[candidates.length - 1];
-      const text = normalizeText(latest.textContent || "");
+      const text = readMessageText(latest);
       return text ? hashText(text) : null;
     }
   }
@@ -169,11 +176,11 @@ function findLatestUserMessageText() {
   ];
   for (const selector of selectors) {
     const candidates = Array.from(document.querySelectorAll(selector)).filter(
-      (element) => normalizeText(element.textContent || "")
+      (element) => readMessageText(element)
     );
     if (candidates.length > 0) {
       const latest = candidates[candidates.length - 1];
-      const text = normalizeText(latest.textContent || "");
+      const text = readMessageText(latest);
       return text || null;
     }
   }
@@ -628,8 +635,6 @@ var zhCN = {
     labelMaxRoundsLimit: "\u8F6E\u6570\u9650\u5236",
     labelMaxRounds: "\u6865\u63A5\u8F6E\u6570",
     maxRoundsHelp: "\u5F00\u542F\u540E\u5230\u8FBE\u76EE\u6807\u8F6E\u6570\u81EA\u52A8\u505C\u6B62\uFF1B\u5173\u95ED\u540E\u663E\u793A\u4E3A \u221E\u3002",
-    maxRoundsDecrease: "\u51CF\u5C11\u6865\u63A5\u8F6E\u6570",
-    maxRoundsIncrease: "\u589E\u52A0\u6865\u63A5\u8F6E\u6570",
     roundUnit: "\u8F6E",
     labelOverride: "\u6682\u505C\u65F6\u4E0B\u4E00\u8DF3\u8986\u76D6",
     labelResumeSource: "\u6062\u590D\u4ECE",
@@ -739,8 +744,6 @@ var en = {
     labelMaxRoundsLimit: "Round limit",
     labelMaxRounds: "Bridge rounds",
     maxRoundsHelp: "When enabled, stops after the selected count; disabled shows \u221E.",
-    maxRoundsDecrease: "Decrease bridge rounds",
-    maxRoundsIncrease: "Increase bridge rounds",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
     labelResumeSource: "Resume from",
@@ -1542,7 +1545,7 @@ function readTargetObservationSample() {
 }
 function readLatestMessageFacts(role) {
   const latestMessage = findLatestMessageElement(role);
-  const text = latestMessage ? normalizeText(latestMessage.textContent || "") : null;
+  const text = latestMessage ? readMessageText(latestMessage) : null;
   return {
     present: text !== null,
     text,

@@ -380,38 +380,9 @@ body {
 
 .popup__round-control {
   display: grid;
-  grid-template-columns: 32px 1fr 32px;
+  grid-template-columns: 1fr;
   align-items: center;
-  gap: 6px;
   margin-top: 6px;
-}
-
-.popup__range {
-  width: 100%;
-  accent-color: var(--popup-gold);
-}
-
-.popup__round-stepper {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--popup-text);
-  font: inherit;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.popup__round-stepper:disabled {
-  cursor: not-allowed;
-  color: rgba(246, 241, 231, 0.25);
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.popup__round-control[data-unlimited="true"] .popup__range {
-  opacity: 0.35;
 }
 
 .popup__round-control[data-unlimited="true"] .popup__round-input {
@@ -421,15 +392,15 @@ body {
 .popup__round-value {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 4px;
   color: var(--popup-text-dim);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .popup__round-input {
-  width: 48px;
-  height: 30px;
+  width: 120px;
+  height: 34px;
   border-radius: 9px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.2);
@@ -669,7 +640,6 @@ body {
 }
 
 .popup__btn:focus-visible,
-.popup__round-stepper:focus-visible,
 .popup__select:focus-visible,
 .popup__toggle-input:focus-visible + .popup__toggle-knob {
   outline: 2px solid rgba(125, 211, 252, 0.75);

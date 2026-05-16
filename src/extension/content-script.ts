@@ -12,6 +12,7 @@ import {
   isReplyGenerationInProgressFromDoc,
   normalizeText,
   readComposerText,
+  readMessageText,
   stillContainsExpectedPayload,
   triggerComposerSend
 } from "./content-helpers.ts";
@@ -842,7 +843,7 @@ function readTargetObservationSample(): { ok: true; result: TargetObservationSam
 
 function readLatestMessageFacts(role: "user" | "assistant"): TargetObservationSample["latestUser"] {
   const latestMessage = findLatestMessageElement(role);
-  const text = latestMessage ? normalizeText(latestMessage.textContent || "") : null;
+  const text = latestMessage ? readMessageText(latestMessage) : null;
 
   return {
     present: text !== null,
@@ -1255,7 +1256,7 @@ function findLatestAssistantElement(): Element | null {
 
   for (const selector of selectors) {
     const candidates = Array.from(document.querySelectorAll(selector)).filter((element) =>
-      normalizeText(element.textContent || "")
+      readMessageText(element)
     );
     if (candidates.length > 0) {
       return candidates[candidates.length - 1];

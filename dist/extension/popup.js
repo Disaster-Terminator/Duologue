@@ -117,7 +117,7 @@ var stopReasonDescriptions = {
     title: "\u5355\u8DF3\u8D85\u65F6",
     severity: "warning",
     summary: "\u67D0\u4E00\u8DF3\u5728\u8D85\u65F6\u7A97\u53E3\u5185\u6CA1\u6709\u89C2\u5BDF\u5230\u53EF\u63A5\u53D7\u7684\u56DE\u590D\u5B8C\u6210\u4FE1\u53F7\u3002",
-    nextAction: "\u786E\u8BA4\u76EE\u6807\u9875\u4ECD\u53EF\u54CD\u5E94\uFF1B\u5FC5\u8981\u65F6\u5237\u65B0\u9875\u9762\u3001\u5F00\u542F\u4FDD\u6D3B\u63D2\u4EF6\uFF0C\u6216\u63D0\u9AD8\u8D85\u65F6\u65F6\u95F4\u3002"
+    nextAction: "\u786E\u8BA4\u76EE\u6807\u9875\u4ECD\u53EF\u54CD\u5E94\uFF1B\u5982\u679C\u9875\u9762\u6CA1\u6709\u7EE7\u7EED\u751F\u6210\uFF0C\u5237\u65B0\u9875\u9762\u6216\u91CD\u65B0\u7ED1\u5B9A\u540E\u518D\u8BD5\u3002"
   },
   [STOP_REASONS.TARGET_HIDDEN_NO_GENERATION]: {
     title: "\u9690\u85CF\u76EE\u6807\u9875\u672A\u5F00\u59CB\u751F\u6210",
@@ -372,8 +372,6 @@ var zhCN = {
     labelMaxRoundsLimit: "\u8F6E\u6570\u9650\u5236",
     labelMaxRounds: "\u6865\u63A5\u8F6E\u6570",
     maxRoundsHelp: "\u5F00\u542F\u540E\u5230\u8FBE\u76EE\u6807\u8F6E\u6570\u81EA\u52A8\u505C\u6B62\uFF1B\u5173\u95ED\u540E\u663E\u793A\u4E3A \u221E\u3002",
-    maxRoundsDecrease: "\u51CF\u5C11\u6865\u63A5\u8F6E\u6570",
-    maxRoundsIncrease: "\u589E\u52A0\u6865\u63A5\u8F6E\u6570",
     roundUnit: "\u8F6E",
     labelOverride: "\u6682\u505C\u65F6\u4E0B\u4E00\u8DF3\u8986\u76D6",
     labelResumeSource: "\u6062\u590D\u4ECE",
@@ -483,8 +481,6 @@ var en = {
     labelMaxRoundsLimit: "Round limit",
     labelMaxRounds: "Bridge rounds",
     maxRoundsHelp: "When enabled, stops after the selected count; disabled shows \u221E.",
-    maxRoundsDecrease: "Decrease bridge rounds",
-    maxRoundsIncrease: "Increase bridge rounds",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
     labelResumeSource: "Resume from",
@@ -618,11 +614,8 @@ var elements = {
   bindingA: requireElement("#bindingA"),
   bindingB: requireElement("#bindingB"),
   localeSelect: requireElement("#localeSelect"),
-  maxRoundsRange: requireElement("#maxRoundsRange"),
   maxRoundsValue: requireElement("#maxRoundsValue"),
   maxRoundsEnabledCheckbox: requireElement("#maxRoundsEnabledCheckbox"),
-  decreaseMaxRoundsButton: requireElement("#decreaseMaxRoundsButton"),
-  increaseMaxRoundsButton: requireElement("#increaseMaxRoundsButton"),
   overlayEnabledCheckbox: requireElement("#overlayEnabledCheckbox"),
   ambientOverlayEnabledCheckbox: requireElement("#ambientOverlayEnabledCheckbox"),
   defaultExpandedCheckbox: requireElement("#defaultExpandedCheckbox"),
@@ -784,16 +777,10 @@ function wireEvents() {
       render(currentModel);
     }
   });
-  elements.maxRoundsRange.addEventListener("input", () => {
-    renderMaxRoundsValue(Number(elements.maxRoundsRange.value));
-  });
-  elements.maxRoundsRange.addEventListener("change", () => {
-    void updateMaxRounds(Number(elements.maxRoundsRange.value));
-  });
   elements.maxRoundsValue.addEventListener("input", () => {
     const parsed = Number(elements.maxRoundsValue.value);
     if (Number.isFinite(parsed)) {
-      elements.maxRoundsRange.value = String(clampMaxRounds(parsed));
+      renderMaxRoundsValue(parsed);
     }
   });
   elements.maxRoundsValue.addEventListener("change", () => {
@@ -811,12 +798,6 @@ function wireEvents() {
         maxRoundsEnabled: elements.maxRoundsEnabledCheckbox.checked
       }
     });
-  });
-  elements.decreaseMaxRoundsButton.addEventListener("click", () => {
-    void updateMaxRounds(Number(elements.maxRoundsRange.value) - 1);
-  });
-  elements.increaseMaxRoundsButton.addEventListener("click", () => {
-    void updateMaxRounds(Number(elements.maxRoundsRange.value) + 1);
   });
   elements.defaultExpandedCheckbox.addEventListener("change", () => {
     void perform({
@@ -901,15 +882,9 @@ function render(model) {
   const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
   const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
   const minEditableMaxRounds = canHotIncreaseMaxRounds ? state.settings.maxRounds : MIN_MAX_ROUNDS;
-  elements.maxRoundsRange.min = String(minEditableMaxRounds);
   elements.maxRoundsValue.min = String(minEditableMaxRounds);
-  elements.maxRoundsRange.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
   elements.maxRoundsValue.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
   elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
-  elements.decreaseMaxRoundsButton.disabled = !controls.canSetSettings || canHotIncreaseMaxRounds || !state.settings.maxRoundsEnabled || state.settings.maxRounds <= MIN_MAX_ROUNDS;
-  elements.increaseMaxRoundsButton.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled || state.settings.maxRounds >= MAX_MAX_ROUNDS;
-  elements.decreaseMaxRoundsButton.setAttribute("aria-label", copy.maxRoundsDecrease);
-  elements.increaseMaxRoundsButton.setAttribute("aria-label", copy.maxRoundsIncrease);
   const maxRoundsToggle = elements.maxRoundsEnabledCheckbox.closest(".popup__toggle");
   if (maxRoundsToggle) {
     maxRoundsToggle.dataset.checked = String(elements.maxRoundsEnabledCheckbox.checked);
@@ -1149,10 +1124,9 @@ async function updateMaxRounds(value) {
 }
 function setMaxRoundsControl(value, enabled) {
   const maxRounds = clampMaxRounds(value);
-  elements.maxRoundsRange.value = String(maxRounds);
   elements.maxRoundsValue.value = String(maxRounds);
   elements.maxRoundsEnabledCheckbox.checked = enabled;
-  elements.maxRoundsRange.closest(".popup__round-control")?.setAttribute(
+  elements.maxRoundsValue.closest(".popup__round-control")?.setAttribute(
     "data-unlimited",
     String(!enabled)
   );
