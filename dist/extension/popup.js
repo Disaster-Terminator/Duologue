@@ -342,13 +342,15 @@ var zhCN = {
     starterB: "B \u8D77\u59CB",
     bindA: "\u7ED1\u5B9A A",
     bindB: "\u7ED1\u5B9A B",
-    unbind: "\u7A7A\u95F2",
+    unbind: "\u53EF\u7ED1\u5B9A",
     start: "\u5F00\u59CB",
     pause: "\u6682\u505C",
     resume: "\u6062\u590D",
     stop: "\u505C\u6B62",
     clear: "\u6E05\u7A7A",
     popup: "\u9762\u677F",
+    sessionLabel: "\u4F1A\u8BDD",
+    utilityLabel: "\u5DE5\u5177",
     collapseExpand: "+",
     collapseCollapse: "\u2212",
     none: "\u65E0",
@@ -446,13 +448,15 @@ var en = {
     starterB: "B starts",
     bindA: "Bind A",
     bindB: "Bind B",
-    unbind: "Idle",
+    unbind: "Ready",
     start: "Start",
     pause: "Pause",
     resume: "Resume",
     stop: "Stop",
     clear: "Clear",
     popup: "Popup",
+    sessionLabel: "Session",
+    utilityLabel: "Tools",
     collapseExpand: "+",
     collapseCollapse: "\u2212",
     none: "None",
@@ -853,6 +857,13 @@ function render(model) {
   elements.pauseButton.disabled = !controls.canPause;
   elements.resumeButton.disabled = !controls.canResume;
   elements.stopButton.disabled = !controls.canStop;
+  elements.startButton.hidden = state.phase === "running" || state.phase === "paused";
+  elements.pauseButton.hidden = state.phase !== "running";
+  elements.resumeButton.hidden = state.phase !== "paused";
+  elements.stopButton.hidden = state.phase !== "running" && state.phase !== "paused";
+  const canBindCurrentTab = Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
+  elements.bindAButton.disabled = !canBindCurrentTab;
+  elements.bindBButton.disabled = !canBindCurrentTab;
   elements.clearTerminalButton.disabled = !controls.canClearTerminal;
   elements.starterSelect.disabled = !controls.canSetStarter;
   elements.overrideSelect.disabled = !controls.canSetOverride;

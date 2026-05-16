@@ -497,7 +497,7 @@ function createOverlay(): HTMLElement {
           </div>
         </div>
         <div class="chatgpt-bridge-overlay__control-group">
-          <span class="chatgpt-bridge-overlay__control-label">Session</span>
+          <span class="chatgpt-bridge-overlay__control-label">${c.sessionLabel}</span>
           <div class="chatgpt-bridge-overlay__session-toolbar">
             <button type="button" class="chatgpt-bridge-overlay__session-primary" data-action="start">${c.start}</button>
             <button type="button" class="chatgpt-bridge-overlay__session-pause" data-action="pause" style="display:none">${c.pause}</button>
@@ -510,7 +510,7 @@ function createOverlay(): HTMLElement {
           </div>
         </div>
         <div class="chatgpt-bridge-overlay__control-group">
-          <span class="chatgpt-bridge-overlay__control-label">Utility</span>
+          <span class="chatgpt-bridge-overlay__control-label">${c.utilityLabel}</span>
           <div class="chatgpt-bridge-overlay__utility-toolbar">
             <button type="button" class="chatgpt-bridge-overlay__utility-btn" data-action="clear-terminal">${c.clear}</button>
             <button type="button" class="chatgpt-bridge-overlay__utility-btn" data-action="open-popup">

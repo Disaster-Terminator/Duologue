@@ -31,6 +31,8 @@ interface OverlayCopy {
   stop: string;
   clear: string;
   popup: string;
+  sessionLabel: string;
+  utilityLabel: string;
   collapseExpand: string;
   collapseCollapse: string;
   none: string;
@@ -123,13 +125,15 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     starterB: "B 起始",
     bindA: "绑定 A",
     bindB: "绑定 B",
-    unbind: "空闲",
+    unbind: "可绑定",
     start: "开始",
     pause: "暂停",
     resume: "恢复",
     stop: "停止",
     clear: "清空",
     popup: "面板",
+    sessionLabel: "会话",
+    utilityLabel: "工具",
     collapseExpand: "+",
     collapseCollapse: "−",
     none: "无",
@@ -228,13 +232,15 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     starterB: "B starts",
     bindA: "Bind A",
     bindB: "Bind B",
-    unbind: "Idle",
+    unbind: "Ready",
     start: "Start",
     pause: "Pause",
     resume: "Resume",
     stop: "Stop",
     clear: "Clear",
     popup: "Popup",
+    sessionLabel: "Session",
+    utilityLabel: "Tools",
     collapseExpand: "+",
     collapseCollapse: "−",
     none: "None",

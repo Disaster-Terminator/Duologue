@@ -62,6 +62,18 @@
           <p class="popup__binding-label" data-copy="currentTab">当前标签页</p>
           <p class="popup__binding-value" id="currentTabStatus">-</p>
         </div>
+        <div class="popup__primary-actions" id="primaryControls">
+          <div class="popup__action-row popup__action-row--primary">
+            <button type="button" class="popup__btn popup__btn--primary" id="startButton" data-copy="start">开始</button>
+            <button type="button" class="popup__btn" id="pauseButton" data-copy="pause">暂停</button>
+            <button type="button" class="popup__btn" id="resumeButton" data-copy="resume">恢复</button>
+            <button type="button" class="popup__btn popup__btn--danger" id="stopButton" data-copy="stop">停止</button>
+          </div>
+          <div class="popup__action-row">
+            <button type="button" class="popup__btn" id="bindAButton" data-copy="bindA">绑定 A</button>
+            <button type="button" class="popup__btn" id="bindBButton" data-copy="bindB">绑定 B</button>
+          </div>
+        </div>
       </section>
 
       <section class="popup__section">
@@ -132,18 +144,9 @@
           <button type="button" class="popup__btn" id="clearTerminalButton" data-copy="clearTerminal">清空终端</button>
           <button type="button" class="popup__btn" id="openHelpButton" data-copy="openHelp">帮助</button>
         </div>
-        <!-- Compat layer: retained for smoke test, hidden from main visual flow -->
-        <div class="popup__compat-row" id="compatControls" hidden>
-          <button type="button" class="popup__btn popup__btn--primary" id="startButton" data-copy="start">开始</button>
-          <button type="button" class="popup__btn" id="pauseButton" data-copy="pause">暂停</button>
-          <button type="button" class="popup__btn" id="resumeButton" data-copy="resume">恢复</button>
-          <button type="button" class="popup__btn" id="stopButton" data-copy="stop">停止</button>
-          <button type="button" class="popup__btn" id="bindAButton" data-copy="bindA">绑定 A</button>
-          <button type="button" class="popup__btn" id="bindBButton" data-copy="bindB">绑定 B</button>
-        </div>
       </section>
 
-      <details class="popup__details" open>
+      <details class="popup__details">
         <summary class="popup__details-summary">
           <span data-copy="sectionDebug">调试</span>
         </summary>

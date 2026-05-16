@@ -20,10 +20,11 @@ body {
   color: var(--popup-text);
   font: 13px/1.45 "Segoe UI", sans-serif;
   color-scheme: dark;
+  overflow-x: hidden;
 }
 
 .popup {
-  width: 336px;
+  width: min(336px, 100vw);
   padding: 10px;
 }
 
@@ -282,6 +283,12 @@ body {
   padding: 8px;
 }
 
+.popup__primary-actions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .popup__label {
   display: block;
   margin: 8px 0 6px;
@@ -443,6 +450,10 @@ body {
   margin-top: 6px;
 }
 
+.popup__action-row--primary {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+}
+
 .popup__btn {
   height: 34px;
   border-radius: 11px;
@@ -482,6 +493,17 @@ body {
 .popup__btn--primary:hover:not(:disabled) {
   border-color: rgba(201, 179, 122, 0.4);
   color: #f2e5bf;
+}
+
+.popup__btn--danger {
+  border-color: rgba(248, 113, 113, 0.18);
+  color: rgba(252, 165, 165, 0.86);
+}
+
+.popup__btn--danger:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(248, 113, 113, 0.06);
+  color: rgba(252, 165, 165, 0.96);
 }
 
 .popup__details {
@@ -555,11 +577,6 @@ body {
   margin: 0;
 }
 
-/* Compat layer - hidden from main visual flow */
-.popup__compat-row {
-  display: none;
-}
-
 .popup__copy-feedback {
   margin-top: 6px;
   padding: 6px 10px;
@@ -567,6 +584,24 @@ body {
   font-size: 11px;
   text-align: center;
   transition: opacity 200ms ease;
+}
+
+.popup__btn:focus-visible,
+.popup__round-stepper:focus-visible,
+.popup__select:focus-visible,
+.popup__toggle-input:focus-visible + .popup__toggle-knob {
+  outline: 2px solid rgba(125, 211, 252, 0.75);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .popup__copy-feedback--success {

@@ -407,6 +407,15 @@ function render(model: PopupModel): void {
   elements.pauseButton.disabled = !controls.canPause;
   elements.resumeButton.disabled = !controls.canResume;
   elements.stopButton.disabled = !controls.canStop;
+  elements.startButton.hidden = state.phase === "running" || state.phase === "paused";
+  elements.pauseButton.hidden = state.phase !== "running";
+  elements.resumeButton.hidden = state.phase !== "paused";
+  elements.stopButton.hidden = state.phase !== "running" && state.phase !== "paused";
+
+  const canBindCurrentTab =
+    Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
+  elements.bindAButton.disabled = !canBindCurrentTab;
+  elements.bindBButton.disabled = !canBindCurrentTab;
   elements.clearTerminalButton.disabled = !controls.canClearTerminal;
   elements.starterSelect.disabled = !controls.canSetStarter;
   elements.overrideSelect.disabled = !controls.canSetOverride;

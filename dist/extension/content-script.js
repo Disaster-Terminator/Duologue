@@ -598,13 +598,15 @@ var zhCN = {
     starterB: "B \u8D77\u59CB",
     bindA: "\u7ED1\u5B9A A",
     bindB: "\u7ED1\u5B9A B",
-    unbind: "\u7A7A\u95F2",
+    unbind: "\u53EF\u7ED1\u5B9A",
     start: "\u5F00\u59CB",
     pause: "\u6682\u505C",
     resume: "\u6062\u590D",
     stop: "\u505C\u6B62",
     clear: "\u6E05\u7A7A",
     popup: "\u9762\u677F",
+    sessionLabel: "\u4F1A\u8BDD",
+    utilityLabel: "\u5DE5\u5177",
     collapseExpand: "+",
     collapseCollapse: "\u2212",
     none: "\u65E0",
@@ -702,13 +704,15 @@ var en = {
     starterB: "B starts",
     bindA: "Bind A",
     bindB: "Bind B",
-    unbind: "Idle",
+    unbind: "Ready",
     start: "Start",
     pause: "Pause",
     resume: "Resume",
     stop: "Stop",
     clear: "Clear",
     popup: "Popup",
+    sessionLabel: "Session",
+    utilityLabel: "Tools",
     collapseExpand: "+",
     collapseCollapse: "\u2212",
     none: "None",
@@ -1238,7 +1242,7 @@ function createOverlay() {
           </div>
         </div>
         <div class="chatgpt-bridge-overlay__control-group">
-          <span class="chatgpt-bridge-overlay__control-label">Session</span>
+          <span class="chatgpt-bridge-overlay__control-label">${c.sessionLabel}</span>
           <div class="chatgpt-bridge-overlay__session-toolbar">
             <button type="button" class="chatgpt-bridge-overlay__session-primary" data-action="start">${c.start}</button>
             <button type="button" class="chatgpt-bridge-overlay__session-pause" data-action="pause" style="display:none">${c.pause}</button>
@@ -1251,7 +1255,7 @@ function createOverlay() {
           </div>
         </div>
         <div class="chatgpt-bridge-overlay__control-group">
-          <span class="chatgpt-bridge-overlay__control-label">Utility</span>
+          <span class="chatgpt-bridge-overlay__control-label">${c.utilityLabel}</span>
           <div class="chatgpt-bridge-overlay__utility-toolbar">
             <button type="button" class="chatgpt-bridge-overlay__utility-btn" data-action="clear-terminal">${c.clear}</button>
             <button type="button" class="chatgpt-bridge-overlay__utility-btn" data-action="open-popup">
