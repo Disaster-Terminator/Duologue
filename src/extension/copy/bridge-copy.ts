@@ -165,7 +165,7 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     labelRelayMode: "桥接模式",
     relayModePlain: "纯内容",
     relayModeControlled: "受控",
-    relayModeHelp: "纯内容不追加控制尾巴；受控模式要求模型输出状态行。",
+    relayModeHelp: "纯内容不追加状态元数据；受控模式要求模型输出状态行。",
     roundUnit: "轮",
     labelOverride: "暂停时下一跳覆盖",
     labelResumeSource: "恢复从",
