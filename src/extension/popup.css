@@ -116,6 +116,15 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.014);
 }
 
+.popup__section--session {
+  padding-bottom: 8px;
+}
+
+.popup__section--compact {
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
 .popup__section--status {
   padding-bottom: 8px;
 }
@@ -303,8 +312,6 @@ body {
 
 .popup__primary-actions {
   margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .popup__label {
@@ -318,6 +325,18 @@ body {
 
 .popup__label:first-of-type {
   margin-top: 10px;
+}
+
+.popup__field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.popup__field-row .popup__label {
+  margin: 0;
 }
 
 .popup__select {
@@ -361,9 +380,10 @@ body {
 
 .popup__round-control {
   display: grid;
-  grid-template-columns: 32px 1fr 32px 64px;
+  grid-template-columns: 32px 1fr 32px;
   align-items: center;
   gap: 6px;
+  margin-top: 6px;
 }
 
 .popup__range {
@@ -408,7 +428,7 @@ body {
 }
 
 .popup__round-input {
-  width: 40px;
+  width: 48px;
   height: 30px;
   border-radius: 9px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -441,6 +461,14 @@ body {
   margin-top: 6px;
   font-size: 12px;
   color: var(--popup-text-dim);
+}
+
+.popup__section--compact .popup__toggle-row {
+  padding: 7px 9px;
+}
+
+.popup__section--compact .popup__label {
+  margin-top: 8px;
 }
 
 .popup__toggle-row--compact {
@@ -496,6 +524,10 @@ body {
 
 .popup__action-row--recovery {
   grid-template-columns: 1fr;
+}
+
+.popup__action-row--bind {
+  margin-top: 8px;
 }
 
 .popup__resume-choice {
