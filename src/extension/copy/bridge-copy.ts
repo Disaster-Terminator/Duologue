@@ -44,6 +44,9 @@ export interface PopupCopy {
   eyebrow: string;
   title: string;
   sectionGlobalStatus: string;
+  sectionRuntime: string;
+  sectionOverlay: string;
+  sectionControl: string;
   sectionSettings: string;
   sectionFallback: string;
   sectionDebug: string;
@@ -146,6 +149,9 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     eyebrow: "Duologue",
     title: "设置",
     sectionGlobalStatus: "全局状态",
+    sectionRuntime: "运行参数",
+    sectionOverlay: "悬浮窗与偏好",
+    sectionControl: "绑定与兜底控制",
     sectionSettings: "设置",
     sectionFallback: "备用操作",
     sectionDebug: "调试",
@@ -255,6 +261,9 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     eyebrow: "Duologue",
     title: "Settings",
     sectionGlobalStatus: "Global status",
+    sectionRuntime: "Runtime",
+    sectionOverlay: "Overlay and preferences",
+    sectionControl: "Bindings and fallback controls",
     sectionSettings: "Settings",
     sectionFallback: "Fallback",
     sectionDebug: "Debug",

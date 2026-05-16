@@ -116,6 +116,22 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.014);
 }
 
+.popup__section--status {
+  padding-bottom: 8px;
+}
+
+.popup__section--status .popup__section-title {
+  display: none;
+}
+
+.popup__section--status .popup__row {
+  margin-top: 7px;
+}
+
+.popup__section--status .popup__step-card {
+  padding: 7px 8px;
+}
+
 .popup__section-header {
   display: flex;
   align-items: flex-start;
