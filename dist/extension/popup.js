@@ -624,14 +624,14 @@ var elements = {
   bindingA: requireElement("#bindingA"),
   bindingB: requireElement("#bindingB"),
   localeSelect: requireElement("#localeSelect"),
-  relayModeSelect: requireElement("#relayModeSelect"),
+  relayModeButtons: requireElements("[data-relay-mode]"),
   maxRoundsValue: requireElement("#maxRoundsValue"),
   maxRoundsEnabledCheckbox: requireElement("#maxRoundsEnabledCheckbox"),
   overlayEnabledCheckbox: requireElement("#overlayEnabledCheckbox"),
   ambientOverlayEnabledCheckbox: requireElement("#ambientOverlayEnabledCheckbox"),
   defaultExpandedCheckbox: requireElement("#defaultExpandedCheckbox"),
   resetOverlayPositionButton: requireElement("#resetOverlayPositionButton"),
-  starterSelect: requireElement("#starterSelect"),
+  starterButtons: requireElements("[data-starter]"),
   overrideSelect: requireElement("#overrideSelect"),
   startButton: requireElement("#startButton"),
   pauseButton: requireElement("#pauseButton"),
@@ -714,12 +714,15 @@ function wireEvents() {
       tabId: currentTabId
     });
   });
-  elements.starterSelect.addEventListener("change", () => {
-    void perform({
-      type: MESSAGE_TYPES.SET_STARTER,
-      role: elements.starterSelect.value
+  for (const button of elements.starterButtons) {
+    button.addEventListener("click", () => {
+      const role = button.dataset.starter === "B" ? "B" : "A";
+      void perform({
+        type: MESSAGE_TYPES.SET_STARTER,
+        role
+      });
     });
-  });
+  }
   elements.overrideSelect.addEventListener("change", () => {
     const role = toNullableRole(elements.overrideSelect.value);
     void perform({
@@ -810,14 +813,17 @@ function wireEvents() {
       }
     });
   });
-  elements.relayModeSelect.addEventListener("change", () => {
-    void perform({
-      type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
-      settings: {
-        relayMode: elements.relayModeSelect.value === "plain" ? "plain" : "controlled"
-      }
+  for (const button of elements.relayModeButtons) {
+    button.addEventListener("click", () => {
+      const relayMode = button.dataset.relayMode === "controlled" ? "controlled" : "plain";
+      void perform({
+        type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
+        settings: {
+          relayMode
+        }
+      });
     });
-  });
+  }
   elements.defaultExpandedCheckbox.addEventListener("change", () => {
     void perform({
       type: MESSAGE_TYPES.SET_OVERLAY_COLLAPSED,
@@ -854,7 +860,6 @@ function render(model) {
     elements.issueRow.hidden = true;
     elements.issueValueDebug.textContent = copy.none;
   }
-  elements.starterSelect.value = state.starter;
   elements.overrideSelect.value = controls.canSetOverride ? readiness.sourceRole : state.nextHopOverride ?? "";
   elements.localeSelect.value = currentLocale;
   setMaxRoundsControl(state.settings.maxRounds, state.settings.maxRoundsEnabled);
@@ -896,7 +901,7 @@ function render(model) {
   elements.bindAButton.disabled = !canBindCurrentTab;
   elements.bindBButton.disabled = !canBindCurrentTab;
   elements.clearTerminalButton.disabled = !controls.canClearTerminal;
-  elements.starterSelect.disabled = !controls.canSetStarter;
+  setSegmentedButtons(elements.starterButtons, state.starter, controls.canSetStarter, "starter");
   elements.overrideSelect.disabled = !controls.canSetOverride;
   const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
   const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
@@ -904,8 +909,7 @@ function render(model) {
   elements.maxRoundsValue.min = String(minEditableMaxRounds);
   elements.maxRoundsValue.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
   elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
-  elements.relayModeSelect.value = state.settings.relayMode;
-  elements.relayModeSelect.disabled = !controls.canSetSettings;
+  setSegmentedButtons(elements.relayModeButtons, state.settings.relayMode, controls.canSetSettings, "relayMode");
   const maxRoundsToggle = elements.maxRoundsEnabledCheckbox.closest(".popup__toggle");
   if (maxRoundsToggle) {
     maxRoundsToggle.dataset.checked = String(elements.maxRoundsEnabledCheckbox.checked);
@@ -917,12 +921,6 @@ function render(model) {
   } else {
     elements.readinessRow.hidden = true;
   }
-  const starterOptions = elements.starterSelect.options;
-  starterOptions[0].textContent = copy.starterA;
-  starterOptions[1].textContent = copy.starterB;
-  const relayModeOptions = elements.relayModeSelect.options;
-  relayModeOptions[0].textContent = copy.relayModePlain;
-  relayModeOptions[1].textContent = copy.relayModeControlled;
   const overrideOptions = elements.overrideSelect.options;
   overrideOptions[0].textContent = copy.overrideNone;
   overrideOptions[1].textContent = copy.overrideA;
@@ -1160,6 +1158,15 @@ function renderMaxRoundsValue(value, enabled = elements.maxRoundsEnabledCheckbox
   elements.maxRoundsValue.value = enabled ? String(clampMaxRounds(value)) : "";
   elements.maxRoundsValue.placeholder = enabled ? "" : "\u221E";
 }
+function setSegmentedButtons(buttons, selectedValue, enabled, dataKey) {
+  for (const button of buttons) {
+    const value = dataKey === "relayMode" ? button.dataset.relayMode : button.dataset.starter;
+    const selected = value === selectedValue;
+    button.disabled = !enabled;
+    button.dataset.selected = String(selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+}
 function clampMaxRounds(value) {
   if (!Number.isFinite(value)) {
     return 8;
@@ -1195,6 +1202,13 @@ function requireElement(selector) {
     throw new Error(`Missing required popup element: ${selector}`);
   }
   return element;
+}
+function requireElements(selector) {
+  const elements2 = Array.from(document.querySelectorAll(selector));
+  if (elements2.length === 0) {
+    throw new Error(`Missing required popup elements: ${selector}`);
+  }
+  return elements2;
 }
 function toNullableRole(value) {
   return value === "A" || value === "B" ? value : null;

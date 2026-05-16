@@ -29,6 +29,7 @@ import type {
 const REFRESH_INTERVAL_MS = 1000;
 const MIN_MAX_ROUNDS = 1;
 const MAX_MAX_ROUNDS = 50;
+type RelayMode = RuntimeState["settings"]["relayMode"];
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return Promise.race([
@@ -47,14 +48,14 @@ interface PopupElements {
   bindingA: HTMLElement;
   bindingB: HTMLElement;
   localeSelect: HTMLSelectElement;
-  relayModeSelect: HTMLSelectElement;
+  relayModeButtons: HTMLButtonElement[];
   maxRoundsValue: HTMLInputElement;
   maxRoundsEnabledCheckbox: HTMLInputElement;
   overlayEnabledCheckbox: HTMLInputElement;
   ambientOverlayEnabledCheckbox: HTMLInputElement;
   defaultExpandedCheckbox: HTMLInputElement;
   resetOverlayPositionButton: HTMLButtonElement;
-  starterSelect: HTMLSelectElement;
+  starterButtons: HTMLButtonElement[];
   overrideSelect: HTMLSelectElement;
   startButton: HTMLButtonElement;
   pauseButton: HTMLButtonElement;
@@ -118,14 +119,14 @@ const elements: PopupElements = {
   bindingA: requireElement<HTMLElement>("#bindingA"),
   bindingB: requireElement<HTMLElement>("#bindingB"),
   localeSelect: requireElement<HTMLSelectElement>("#localeSelect"),
-  relayModeSelect: requireElement<HTMLSelectElement>("#relayModeSelect"),
+  relayModeButtons: requireElements<HTMLButtonElement>("[data-relay-mode]"),
   maxRoundsValue: requireElement<HTMLInputElement>("#maxRoundsValue"),
   maxRoundsEnabledCheckbox: requireElement<HTMLInputElement>("#maxRoundsEnabledCheckbox"),
   overlayEnabledCheckbox: requireElement<HTMLInputElement>("#overlayEnabledCheckbox"),
   ambientOverlayEnabledCheckbox: requireElement<HTMLInputElement>("#ambientOverlayEnabledCheckbox"),
   defaultExpandedCheckbox: requireElement<HTMLInputElement>("#defaultExpandedCheckbox"),
   resetOverlayPositionButton: requireElement<HTMLButtonElement>("#resetOverlayPositionButton"),
-  starterSelect: requireElement<HTMLSelectElement>("#starterSelect"),
+  starterButtons: requireElements<HTMLButtonElement>("[data-starter]"),
   overrideSelect: requireElement<HTMLSelectElement>("#overrideSelect"),
   startButton: requireElement<HTMLButtonElement>("#startButton"),
   pauseButton: requireElement<HTMLButtonElement>("#pauseButton"),
@@ -219,12 +220,15 @@ function wireEvents(): void {
     });
   });
 
-  elements.starterSelect.addEventListener("change", () => {
-    void perform({
-      type: MESSAGE_TYPES.SET_STARTER,
-      role: elements.starterSelect.value as BridgeRole
+  for (const button of elements.starterButtons) {
+    button.addEventListener("click", () => {
+      const role = button.dataset.starter === "B" ? "B" : "A";
+      void perform({
+        type: MESSAGE_TYPES.SET_STARTER,
+        role
+      });
     });
-  });
+  }
 
   elements.overrideSelect.addEventListener("change", () => {
     const role = toNullableRole(elements.overrideSelect.value);
@@ -333,14 +337,17 @@ function wireEvents(): void {
     });
   });
 
-  elements.relayModeSelect.addEventListener("change", () => {
-    void perform({
-      type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
-      settings: {
-        relayMode: elements.relayModeSelect.value === "plain" ? "plain" : "controlled"
-      }
+  for (const button of elements.relayModeButtons) {
+    button.addEventListener("click", () => {
+      const relayMode: RelayMode = button.dataset.relayMode === "controlled" ? "controlled" : "plain";
+      void perform({
+        type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
+        settings: {
+          relayMode
+        }
+      });
     });
-  });
+  }
 
   elements.defaultExpandedCheckbox.addEventListener("change", () => {
     void perform({
@@ -382,7 +389,6 @@ function render(model: PopupModel): void {
     elements.issueValueDebug.textContent = copy.none;
   }
 
-  elements.starterSelect.value = state.starter;
   elements.overrideSelect.value = controls.canSetOverride ? readiness.sourceRole : state.nextHopOverride ?? "";
   elements.localeSelect.value = currentLocale;
   setMaxRoundsControl(state.settings.maxRounds, state.settings.maxRoundsEnabled);
@@ -433,7 +439,7 @@ function render(model: PopupModel): void {
   elements.bindAButton.disabled = !canBindCurrentTab;
   elements.bindBButton.disabled = !canBindCurrentTab;
   elements.clearTerminalButton.disabled = !controls.canClearTerminal;
-  elements.starterSelect.disabled = !controls.canSetStarter;
+  setSegmentedButtons(elements.starterButtons, state.starter, controls.canSetStarter, "starter");
   elements.overrideSelect.disabled = !controls.canSetOverride;
   const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
   const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
@@ -441,8 +447,7 @@ function render(model: PopupModel): void {
   elements.maxRoundsValue.min = String(minEditableMaxRounds);
   elements.maxRoundsValue.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
   elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
-  elements.relayModeSelect.value = state.settings.relayMode;
-  elements.relayModeSelect.disabled = !controls.canSetSettings;
+  setSegmentedButtons(elements.relayModeButtons, state.settings.relayMode, controls.canSetSettings, "relayMode");
 
   const maxRoundsToggle = elements.maxRoundsEnabledCheckbox.closest<HTMLElement>(".popup__toggle");
   if (maxRoundsToggle) {
@@ -456,14 +461,6 @@ function render(model: PopupModel): void {
   } else {
     elements.readinessRow.hidden = true;
   }
-
-  const starterOptions = elements.starterSelect.options;
-  starterOptions[0].textContent = copy.starterA;
-  starterOptions[1].textContent = copy.starterB;
-
-  const relayModeOptions = elements.relayModeSelect.options;
-  relayModeOptions[0].textContent = copy.relayModePlain;
-  relayModeOptions[1].textContent = copy.relayModeControlled;
 
   const overrideOptions = elements.overrideSelect.options;
   overrideOptions[0].textContent = copy.overrideNone;
@@ -758,6 +755,21 @@ function renderMaxRoundsValue(value: number, enabled = elements.maxRoundsEnabled
   elements.maxRoundsValue.placeholder = enabled ? "" : "∞";
 }
 
+function setSegmentedButtons(
+  buttons: HTMLButtonElement[],
+  selectedValue: string,
+  enabled: boolean,
+  dataKey: "relayMode" | "starter"
+): void {
+  for (const button of buttons) {
+    const value = dataKey === "relayMode" ? button.dataset.relayMode : button.dataset.starter;
+    const selected = value === selectedValue;
+    button.disabled = !enabled;
+    button.dataset.selected = String(selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+}
+
 function clampMaxRounds(value: number): number {
   if (!Number.isFinite(value)) {
     return 8;
@@ -800,6 +812,15 @@ function requireElement<T extends Element>(selector: string): T {
   }
 
   return element;
+}
+
+function requireElements<T extends Element>(selector: string): T[] {
+  const elements = Array.from(document.querySelectorAll<T>(selector));
+  if (elements.length === 0) {
+    throw new Error(`Missing required popup elements: ${selector}`);
+  }
+
+  return elements;
 }
 
 function toNullableRole(value: string): BridgeRole | null {

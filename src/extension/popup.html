@@ -68,17 +68,17 @@
           </div>
         </div>
         <p class="popup__hint" data-copy="maxRoundsHelp">到达目标轮数后自动停止。</p>
-        <label class="popup__label" for="relayModeSelect" data-copy="labelRelayMode">桥接模式</label>
-        <select class="popup__select" id="relayModeSelect">
-          <option value="plain">纯内容</option>
-          <option value="controlled">受控</option>
-        </select>
+        <span class="popup__label" id="relayModeLabel" data-copy="labelRelayMode">桥接模式</span>
+        <div class="popup__segmented" role="group" aria-labelledby="relayModeLabel">
+          <button type="button" class="popup__segment" data-relay-mode="plain" data-copy="relayModePlain" aria-pressed="true">纯内容</button>
+          <button type="button" class="popup__segment" data-relay-mode="controlled" data-copy="relayModeControlled" aria-pressed="false">受控</button>
+        </div>
         <p class="popup__hint" data-copy="relayModeHelp">纯内容不追加控制尾巴；受控模式要求模型输出状态行。</p>
-        <label class="popup__label" for="starterSelect" data-copy="labelStarter">起始侧</label>
-        <select class="popup__select" id="starterSelect">
-          <option value="A">A 起始</option>
-          <option value="B">B 起始</option>
-        </select>
+        <span class="popup__label" id="starterLabel" data-copy="labelStarter">起始侧</span>
+        <div class="popup__segmented" role="group" aria-labelledby="starterLabel">
+          <button type="button" class="popup__segment" data-starter="A" data-copy="starterA" aria-pressed="true">A 起始</button>
+          <button type="button" class="popup__segment" data-starter="B" data-copy="starterB" aria-pressed="false">B 起始</button>
+        </div>
       </section>
 
       <section class="popup__section popup__section--session">
