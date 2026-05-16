@@ -456,6 +456,10 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
 }
 
+.popup__resume-choice {
+  margin-top: 8px;
+}
+
 .popup__btn {
   height: 34px;
   border-radius: 11px;

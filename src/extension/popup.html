@@ -70,6 +70,13 @@
             <button type="button" class="popup__btn popup__btn--danger" id="stopButton" data-copy="stop">停止</button>
             <button type="button" class="popup__btn popup__btn--primary" id="clearTerminalButton" data-copy="clearTerminal" hidden>清空终端</button>
           </div>
+          <div class="popup__resume-choice" id="resumeSourceField" hidden>
+            <label class="popup__label" for="overrideSelect" data-copy="labelResumeSource">恢复从</label>
+            <select class="popup__select" id="overrideSelect">
+              <option value="A">A → B</option>
+              <option value="B">B → A</option>
+            </select>
+          </div>
           <div class="popup__action-row">
             <button type="button" class="popup__btn" id="bindAButton" data-copy="bindA">绑定 A</button>
             <button type="button" class="popup__btn" id="bindBButton" data-copy="bindB">绑定 B</button>
@@ -134,12 +141,6 @@
         <select class="popup__select" id="starterSelect">
           <option value="A">A 起始</option>
           <option value="B">B 起始</option>
-        </select>
-        <label class="popup__label" for="overrideSelect">暂停态下一跳覆盖</label>
-        <select class="popup__select" id="overrideSelect">
-          <option value="">不覆盖</option>
-          <option value="A">A → B</option>
-          <option value="B">B → A</option>
         </select>
         <div class="popup__action-row">
           <button type="button" class="popup__btn" id="openHelpButton" data-copy="openHelp">帮助</button>

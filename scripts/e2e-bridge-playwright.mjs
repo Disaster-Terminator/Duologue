@@ -28,8 +28,10 @@ import {
   reloadAfterSessionRestore,
   ensureOverlay,
   clickOverlayAction,
+  clickOverlayResumeSource,
   clickPopupAction,
   expectOverlayActionEnabled,
+  expectOverlayResumeSourceVisible,
   expectPopupActionEnabled,
   expectPopupPhaseState,
   expectPopupControlState,
@@ -847,7 +849,8 @@ async function resumeAndVerifyHop({ env, overrideRole = null, expectedSourceRole
   const { pageA, pageB, popupPage } = env;
 
   if (overrideRole) {
-    await popupPage.locator("#overrideSelect").selectOption(overrideRole);
+    await expectOverlayResumeSourceVisible(pageA);
+    await clickOverlayResumeSource(pageA, overrideRole);
     await popupPage.waitForTimeout(500);
   }
 
@@ -1537,6 +1540,27 @@ async function runHappyPath(env) {
       canStop: true,
       overrideSelectEnabled: true
     });
+
+    const pausedBeforeChoice = await readPopupState(popupPage);
+    const pausedHop = parseNextHopText(pausedBeforeChoice.nextHop);
+    const overlayResumeSource = pausedHop.sourceRole === "A" ? "B" : "A";
+    await expectOverlayResumeSourceVisible(pageA);
+    await clickOverlayResumeSource(pageA, overlayResumeSource);
+    const expectedOverlayChoiceHop = `${overlayResumeSource} -> ${overlayResumeSource === "A" ? "B" : "A"}`;
+    await popupPage.waitForFunction(
+      (expectedNextHop) => {
+        const value = document.querySelector("#nextHopValue")?.textContent?.trim().toUpperCase();
+        return value === expectedNextHop;
+      },
+      expectedOverlayChoiceHop,
+      { timeout: 30000 }
+    );
+    const pausedAfterChoice = await readPopupState(popupPage);
+    assert.equal(
+      normalizeText(pausedAfterChoice.nextHop).toUpperCase(),
+      expectedOverlayChoiceHop,
+      `Expected overlay resume-source choice to update popup next hop, got ${JSON.stringify(pausedAfterChoice)}`
+    );
 
     await expectOverlayActionEnabled(pageA, "resume");
     await clickOverlayAction(pageA, "resume");

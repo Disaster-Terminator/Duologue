@@ -338,6 +338,7 @@ var zhCN = {
     stepLabel: "\u6B65\u9AA4",
     issueLabel: "\u95EE\u9898",
     starterLabel: "\u8D77\u59CB\u4FA7",
+    resumeSourceLabel: "\u6062\u590D\u4ECE",
     starterA: "A \u8D77\u59CB",
     starterB: "B \u8D77\u59CB",
     bindA: "\u7ED1\u5B9A A",
@@ -372,6 +373,7 @@ var zhCN = {
     maxRoundsIncrease: "\u589E\u52A0\u6865\u63A5\u8F6E\u6570",
     roundUnit: "\u8F6E",
     labelOverride: "\u6682\u505C\u65F6\u4E0B\u4E00\u8DF3\u8986\u76D6",
+    labelResumeSource: "\u6062\u590D\u4ECE",
     labelEnableOverlay: "\u542F\u7528\u60AC\u6D6E\u7A97",
     labelEnableAmbientOverlay: "\u5168\u7AD9\u72B6\u6001\u63D0\u793A",
     labelDefaultExpanded: "\u9ED8\u8BA4\u5C55\u5F00\u60AC\u6D6E\u7A97",
@@ -444,6 +446,7 @@ var en = {
     stepLabel: "Step",
     issueLabel: "Issue",
     starterLabel: "Starter",
+    resumeSourceLabel: "Resume from",
     starterA: "A starts",
     starterB: "B starts",
     bindA: "Bind A",
@@ -478,6 +481,7 @@ var en = {
     maxRoundsIncrease: "Increase bridge rounds",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
+    labelResumeSource: "Resume from",
     labelEnableOverlay: "Enable overlay",
     labelEnableAmbientOverlay: "Site-wide status hint",
     labelDefaultExpanded: "Default expanded overlay",
@@ -624,6 +628,7 @@ var elements = {
   resumeButton: requireElement("#resumeButton"),
   stopButton: requireElement("#stopButton"),
   clearTerminalButton: requireElement("#clearTerminalButton"),
+  resumeSourceField: requireElement("#resumeSourceField"),
   copyDebugButton: requireElement("#copyDebugButton"),
   downloadDebugButton: requireElement("#downloadDebugButton"),
   openHelpButton: requireElement("#openHelpButton"),
@@ -828,7 +833,7 @@ function render(model) {
     elements.issueValueDebug.textContent = copy.none;
   }
   elements.starterSelect.value = state.starter;
-  elements.overrideSelect.value = state.nextHopOverride ?? "";
+  elements.overrideSelect.value = controls.canSetOverride ? readiness.sourceRole : state.nextHopOverride ?? "";
   elements.localeSelect.value = currentLocale;
   setMaxRoundsControl(state.settings.maxRounds, state.settings.maxRoundsEnabled);
   elements.overlayEnabledCheckbox.checked = overlaySettings.enabled;
@@ -862,6 +867,7 @@ function render(model) {
   elements.resumeButton.hidden = state.phase !== "paused";
   elements.stopButton.hidden = state.phase !== "running" && state.phase !== "paused";
   elements.clearTerminalButton.hidden = !controls.canClearTerminal;
+  elements.resumeSourceField.hidden = !controls.canSetOverride;
   const canBindCurrentTab = Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
   elements.bindAButton.disabled = !canBindCurrentTab;
   elements.bindBButton.disabled = !canBindCurrentTab;

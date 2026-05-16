@@ -20,6 +20,7 @@ interface OverlayCopy {
   stepLabel: string;
   issueLabel: string;
   starterLabel: string;
+  resumeSourceLabel: string;
   starterA: string;
   starterB: string;
   bindA: string;
@@ -55,6 +56,7 @@ export interface PopupCopy {
   maxRoundsIncrease: string;
   roundUnit: string;
   labelOverride: string;
+  labelResumeSource: string;
   labelEnableOverlay: string;
   labelEnableAmbientOverlay: string;
   labelDefaultExpanded: string;
@@ -121,6 +123,7 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     stepLabel: "步骤",
     issueLabel: "问题",
     starterLabel: "起始侧",
+    resumeSourceLabel: "恢复从",
     starterA: "A 起始",
     starterB: "B 起始",
     bindA: "绑定 A",
@@ -155,6 +158,7 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     maxRoundsIncrease: "增加桥接轮数",
     roundUnit: "轮",
     labelOverride: "暂停时下一跳覆盖",
+    labelResumeSource: "恢复从",
     labelEnableOverlay: "启用悬浮窗",
     labelEnableAmbientOverlay: "全站状态提示",
     labelDefaultExpanded: "默认展开悬浮窗",
@@ -228,6 +232,7 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     stepLabel: "Step",
     issueLabel: "Issue",
     starterLabel: "Starter",
+    resumeSourceLabel: "Resume from",
     starterA: "A starts",
     starterB: "B starts",
     bindA: "Bind A",
@@ -262,6 +267,7 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     maxRoundsIncrease: "Increase bridge rounds",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
+    labelResumeSource: "Resume from",
     labelEnableOverlay: "Enable overlay",
     labelEnableAmbientOverlay: "Site-wide status hint",
     labelDefaultExpanded: "Default expanded overlay",

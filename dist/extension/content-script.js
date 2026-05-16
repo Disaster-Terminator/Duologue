@@ -594,6 +594,7 @@ var zhCN = {
     stepLabel: "\u6B65\u9AA4",
     issueLabel: "\u95EE\u9898",
     starterLabel: "\u8D77\u59CB\u4FA7",
+    resumeSourceLabel: "\u6062\u590D\u4ECE",
     starterA: "A \u8D77\u59CB",
     starterB: "B \u8D77\u59CB",
     bindA: "\u7ED1\u5B9A A",
@@ -628,6 +629,7 @@ var zhCN = {
     maxRoundsIncrease: "\u589E\u52A0\u6865\u63A5\u8F6E\u6570",
     roundUnit: "\u8F6E",
     labelOverride: "\u6682\u505C\u65F6\u4E0B\u4E00\u8DF3\u8986\u76D6",
+    labelResumeSource: "\u6062\u590D\u4ECE",
     labelEnableOverlay: "\u542F\u7528\u60AC\u6D6E\u7A97",
     labelEnableAmbientOverlay: "\u5168\u7AD9\u72B6\u6001\u63D0\u793A",
     labelDefaultExpanded: "\u9ED8\u8BA4\u5C55\u5F00\u60AC\u6D6E\u7A97",
@@ -700,6 +702,7 @@ var en = {
     stepLabel: "Step",
     issueLabel: "Issue",
     starterLabel: "Starter",
+    resumeSourceLabel: "Resume from",
     starterA: "A starts",
     starterB: "B starts",
     bindA: "Bind A",
@@ -734,6 +737,7 @@ var en = {
     maxRoundsIncrease: "Increase bridge rounds",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
+    labelResumeSource: "Resume from",
     labelEnableOverlay: "Enable overlay",
     labelEnableAmbientOverlay: "Site-wide status hint",
     labelDefaultExpanded: "Default expanded overlay",
@@ -1045,7 +1049,8 @@ function bindOverlayEvents() {
   overlay.querySelectorAll("[data-starter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const starter = btn.dataset.starter;
-      if (starter && starter !== overlaySnapshot.starter) {
+      const selectedSource = overlaySnapshot.readiness?.sourceRole ?? overlaySnapshot.starter;
+      if (starter && starter !== selectedSource) {
         void dispatchOverlayAction({
           type: MESSAGE_TYPES.SET_STARTER,
           role: starter
@@ -1307,13 +1312,15 @@ function renderOverlay() {
     requireOverlayElement("[data-slot='issue']").textContent = formatIssueLine(overlayLocale, issueText);
   }
   const starterBtns = overlay.querySelectorAll("[data-starter]");
+  const selectedSource = overlaySnapshot.readiness?.sourceRole ?? overlaySnapshot.starter;
   starterBtns.forEach((btn) => {
-    const isActive = btn.dataset.starter === overlaySnapshot.starter;
+    const isActive = btn.dataset.starter === selectedSource;
     btn.dataset.active = String(isActive);
     btn.disabled = !controls?.canSetStarter;
   });
   const slider = requireOverlayElement(".chatgpt-bridge-overlay__starter-slider");
-  slider.dataset.pos = overlaySnapshot.starter;
+  slider.dataset.pos = selectedSource;
+  requireOverlayElement(".chatgpt-bridge-overlay__starter-label").textContent = overlaySnapshot.phase === "paused" ? c.resumeSourceLabel : c.starterLabel;
   const bindingBtns = overlay.querySelectorAll("[data-bind-role]");
   bindingBtns.forEach((btn) => {
     const role = btn.dataset.bindRole;
@@ -1351,6 +1358,10 @@ function renderOverlay() {
   overlay.classList.toggle("chatgpt-bridge-overlay--terminal", Boolean(overlaySnapshot.requiresTerminalClear));
   overlay.classList.toggle("chatgpt-bridge-overlay--ambient", isAmbient);
   overlay.classList.toggle("chatgpt-bridge-overlay--collapsed", Boolean(overlaySettings?.collapsed) && !isAmbient);
+  overlay.classList.toggle(
+    "chatgpt-bridge-overlay--resume-choice",
+    overlaySnapshot.phase === "paused" && Boolean(controls?.canSetOverride)
+  );
   overlay.hidden = isAmbient ? overlaySettings?.ambientEnabled !== true || !ambientVisible : overlaySettings?.enabled === false;
   applyOverlayPosition(overlaySettings?.position ?? null);
   const clearTerminalBtn = requireOverlayElement("[data-action='clear-terminal']");

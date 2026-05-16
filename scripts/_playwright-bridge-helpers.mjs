@@ -1295,6 +1295,54 @@ export async function clickOverlayAction(page, action) {
 }
 
 /**
+ * Click the paused overlay resume source option.
+ * @param {import("playwright").Page} page
+ * @param {"A"|"B"} role
+ */
+export async function clickOverlayResumeSource(page, role) {
+  const selector = `.chatgpt-bridge-overlay:not([hidden]) [data-starter="${role}"]`;
+  await expectOverlayResumeSourceVisible(page);
+  const sourceButton = page.locator(selector).first();
+  await sourceButton.waitFor({ state: "visible", timeout: 30000 });
+  const enabled = await waitForEnabledButton(sourceButton, 15000);
+  if (!enabled) {
+    throw new Error(`Overlay resume source ${role} never became enabled within 15s.`);
+  }
+
+  try {
+    await sourceButton.click({ force: true, timeout: 5000 });
+  } catch {
+    await sourceButton.evaluate((node) => node.click()).catch(() => {});
+  }
+
+  await page.waitForFunction(
+    (targetRole) => {
+      const btn = document.querySelector(`.chatgpt-bridge-overlay:not([hidden]) [data-starter="${targetRole}"]`);
+      return btn?.getAttribute("data-active") === "true";
+    },
+    role,
+    { timeout: 15000 }
+  );
+}
+
+/**
+ * Wait until the overlay resume-source control is visible.
+ * @param {import("playwright").Page} page
+ */
+export async function expectOverlayResumeSourceVisible(page) {
+  await page.waitForFunction(
+    () => {
+      const overlay = document.querySelector(".chatgpt-bridge-overlay:not([hidden])");
+      if (!overlay || !overlay.classList.contains("chatgpt-bridge-overlay--resume-choice")) return false;
+      const card = overlay.querySelector(".chatgpt-bridge-overlay__starter-card");
+      if (!card) return false;
+      return window.getComputedStyle(card).display !== "none";
+    },
+    { timeout: 30000 }
+  );
+}
+
+/**
  * Wait until overlay action is enabled (visible and not disabled).
  * @param {import("playwright").Page} page
  * @param {"start"|"pause"|"resume"|"stop"|"clear-terminal"} action

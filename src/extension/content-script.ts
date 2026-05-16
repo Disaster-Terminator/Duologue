@@ -274,7 +274,8 @@ function bindOverlayEvents(): void {
   overlay.querySelectorAll<HTMLButtonElement>("[data-starter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const starter = btn.dataset.starter as "A" | "B";
-      if (starter && starter !== overlaySnapshot.starter) {
+      const selectedSource = overlaySnapshot.readiness?.sourceRole ?? overlaySnapshot.starter;
+      if (starter && starter !== selectedSource) {
         void dispatchOverlayAction({
           type: MESSAGE_TYPES.SET_STARTER,
           role: starter
@@ -576,14 +577,17 @@ function renderOverlay(): void {
   }
 
   const starterBtns = overlay.querySelectorAll<HTMLButtonElement>("[data-starter]");
+  const selectedSource = overlaySnapshot.readiness?.sourceRole ?? overlaySnapshot.starter;
   starterBtns.forEach((btn) => {
-    const isActive = btn.dataset.starter === overlaySnapshot.starter;
+    const isActive = btn.dataset.starter === selectedSource;
     btn.dataset.active = String(isActive);
     btn.disabled = !controls?.canSetStarter;
   });
 
   const slider = requireOverlayElement<HTMLElement>(".chatgpt-bridge-overlay__starter-slider");
-  slider.dataset.pos = overlaySnapshot.starter;
+  slider.dataset.pos = selectedSource;
+  requireOverlayElement<HTMLElement>(".chatgpt-bridge-overlay__starter-label").textContent =
+    overlaySnapshot.phase === "paused" ? c.resumeSourceLabel : c.starterLabel;
 
   const bindingBtns = overlay.querySelectorAll<HTMLButtonElement>("[data-bind-role]");
   bindingBtns.forEach((btn) => {
@@ -628,6 +632,10 @@ function renderOverlay(): void {
   overlay.classList.toggle("chatgpt-bridge-overlay--terminal", Boolean(overlaySnapshot.requiresTerminalClear));
   overlay.classList.toggle("chatgpt-bridge-overlay--ambient", isAmbient);
   overlay.classList.toggle("chatgpt-bridge-overlay--collapsed", Boolean(overlaySettings?.collapsed) && !isAmbient);
+  overlay.classList.toggle(
+    "chatgpt-bridge-overlay--resume-choice",
+    overlaySnapshot.phase === "paused" && Boolean(controls?.canSetOverride)
+  );
   overlay.hidden = isAmbient
     ? overlaySettings?.ambientEnabled !== true || !ambientVisible
     : overlaySettings?.enabled === false;

@@ -63,6 +63,7 @@ interface PopupElements {
   resumeButton: HTMLButtonElement;
   stopButton: HTMLButtonElement;
   clearTerminalButton: HTMLButtonElement;
+  resumeSourceField: HTMLElement;
   copyDebugButton: HTMLButtonElement;
   downloadDebugButton: HTMLButtonElement;
   openHelpButton: HTMLButtonElement;
@@ -133,6 +134,7 @@ const elements: PopupElements = {
   resumeButton: requireElement<HTMLButtonElement>("#resumeButton"),
   stopButton: requireElement<HTMLButtonElement>("#stopButton"),
   clearTerminalButton: requireElement<HTMLButtonElement>("#clearTerminalButton"),
+  resumeSourceField: requireElement<HTMLElement>("#resumeSourceField"),
   copyDebugButton: requireElement<HTMLButtonElement>("#copyDebugButton"),
   downloadDebugButton: requireElement<HTMLButtonElement>("#downloadDebugButton"),
   openHelpButton: requireElement<HTMLButtonElement>("#openHelpButton"),
@@ -371,7 +373,7 @@ function render(model: PopupModel): void {
   }
 
   elements.starterSelect.value = state.starter;
-  elements.overrideSelect.value = state.nextHopOverride ?? "";
+  elements.overrideSelect.value = controls.canSetOverride ? readiness.sourceRole : state.nextHopOverride ?? "";
   elements.localeSelect.value = currentLocale;
   setMaxRoundsControl(state.settings.maxRounds, state.settings.maxRoundsEnabled);
   elements.overlayEnabledCheckbox.checked = overlaySettings.enabled;
@@ -412,6 +414,7 @@ function render(model: PopupModel): void {
   elements.resumeButton.hidden = state.phase !== "paused";
   elements.stopButton.hidden = state.phase !== "running" && state.phase !== "paused";
   elements.clearTerminalButton.hidden = !controls.canClearTerminal;
+  elements.resumeSourceField.hidden = !controls.canSetOverride;
 
   const canBindCurrentTab =
     Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
