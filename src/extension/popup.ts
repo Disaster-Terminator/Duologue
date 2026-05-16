@@ -411,6 +411,7 @@ function render(model: PopupModel): void {
   elements.pauseButton.hidden = state.phase !== "running";
   elements.resumeButton.hidden = state.phase !== "paused";
   elements.stopButton.hidden = state.phase !== "running" && state.phase !== "paused";
+  elements.clearTerminalButton.hidden = !controls.canClearTerminal;
 
   const canBindCurrentTab =
     Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";

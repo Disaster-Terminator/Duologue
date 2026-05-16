@@ -1353,7 +1353,9 @@ function renderOverlay() {
   overlay.classList.toggle("chatgpt-bridge-overlay--collapsed", Boolean(overlaySettings?.collapsed) && !isAmbient);
   overlay.hidden = isAmbient ? overlaySettings?.ambientEnabled !== true || !ambientVisible : overlaySettings?.enabled === false;
   applyOverlayPosition(overlaySettings?.position ?? null);
-  requireOverlayElement("[data-action='clear-terminal']").disabled = !controls?.canClearTerminal;
+  const clearTerminalBtn = requireOverlayElement("[data-action='clear-terminal']");
+  clearTerminalBtn.disabled = !controls?.canClearTerminal;
+  clearTerminalBtn.style.display = controls?.canClearTerminal ? "flex" : "none";
   requireOverlayElement("[data-action='toggle-collapse']").textContent = overlaySettings?.collapsed ? c.collapseExpand : c.collapseCollapse;
   requireOverlayElement("[data-bind-role='A']").disabled = !canChangeBindings;
   requireOverlayElement("[data-bind-role='B']").disabled = !canChangeBindings;

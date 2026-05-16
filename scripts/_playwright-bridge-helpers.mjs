@@ -1285,9 +1285,9 @@ export async function clickOverlayBind(page, role) {
 }
 
 /**
- * Click overlay action button (start/pause/resume/stop).
+ * Click overlay action button (start/pause/resume/stop/clear-terminal).
  * @param {import("playwright").Page} page
- * @param {"start"|"pause"|"resume"|"stop"} action
+ * @param {"start"|"pause"|"resume"|"stop"|"clear-terminal"} action
  */
 export async function clickOverlayAction(page, action) {
   const selector = `[data-action="${action}"]`;
@@ -1297,7 +1297,7 @@ export async function clickOverlayAction(page, action) {
 /**
  * Wait until overlay action is enabled (visible and not disabled).
  * @param {import("playwright").Page} page
- * @param {"start"|"pause"|"resume"|"stop"} action
+ * @param {"start"|"pause"|"resume"|"stop"|"clear-terminal"} action
  */
 export async function expectOverlayActionEnabled(page, action) {
   const selector = `[data-action="${action}"]`;
@@ -1438,7 +1438,7 @@ function popupActionSelector(action) {
 
 /**
  * @param {import("playwright").Page} page
- * @param {"start"|"pause"|"resume"|"stop"} action
+ * @param {"start"|"pause"|"resume"|"stop"|"clear-terminal"} action
  */
 export async function expectPopupActionEnabled(page, action) {
   const selector = popupActionSelector(action);
@@ -1455,29 +1455,10 @@ export async function expectPopupActionEnabled(page, action) {
 
 /**
  * @param {import("playwright").Page} page
- * @param {"start"|"pause"|"resume"|"stop"} action
+ * @param {"start"|"pause"|"resume"|"stop"|"clear-terminal"} action
  */
 export async function clickPopupAction(page, action) {
-  const messageType = (() => {
-    switch (action) {
-      case "start":
-        return "START_SESSION";
-      case "pause":
-        return "PAUSE_SESSION";
-      case "resume":
-        return "RESUME_SESSION";
-      case "stop":
-        return "STOP_SESSION";
-      case "clear-terminal":
-        return "CLEAR_TERMINAL";
-      default:
-        throw new Error(`Unknown popup action: ${action}`);
-    }
-  })();
-
-  await page.evaluate(async (type) => {
-    await chrome.runtime.sendMessage({ type });
-  }, messageType);
+  await page.locator(popupActionSelector(action)).click();
 }
 
 /**

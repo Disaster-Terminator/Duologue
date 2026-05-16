@@ -633,7 +633,9 @@ function renderOverlay(): void {
     : overlaySettings?.enabled === false;
   applyOverlayPosition(overlaySettings?.position ?? null);
 
-  requireOverlayElement<HTMLButtonElement>("[data-action='clear-terminal']").disabled = !controls?.canClearTerminal;
+  const clearTerminalBtn = requireOverlayElement<HTMLButtonElement>("[data-action='clear-terminal']");
+  clearTerminalBtn.disabled = !controls?.canClearTerminal;
+  clearTerminalBtn.style.display = controls?.canClearTerminal ? "flex" : "none";
   requireOverlayElement<HTMLButtonElement>("[data-action='toggle-collapse']").textContent =
     overlaySettings?.collapsed ? c.collapseExpand : c.collapseCollapse;
 

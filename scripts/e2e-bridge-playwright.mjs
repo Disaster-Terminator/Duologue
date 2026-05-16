@@ -1700,6 +1700,14 @@ async function runPopupOverlaySync(env) {
     throw new Error(`Task 9 suite stop did not settle: ${JSON.stringify(finalRuntimeState)}`);
   }
 
+  await expectPopupControlState(popupPage, {
+    clearTerminalEnabled: true
+  });
+  await expectOverlayActionEnabled(pageA, "clear-terminal");
+  await clickOverlayAction(pageA, "clear-terminal");
+  await expectPopupPhaseState(popupPage, "ready");
+  await expectOverlayActionEnabled(pageA, "start");
+
   return { success: true };
 }
 
