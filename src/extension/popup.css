@@ -16,6 +16,8 @@
 
 body {
   margin: 0;
+  width: 336px;
+  min-width: 336px;
   background: var(--popup-bg);
   color: var(--popup-text);
   font: 13px/1.45 "Segoe UI", sans-serif;
@@ -24,7 +26,7 @@ body {
 }
 
 .popup {
-  width: min(336px, 100vw);
+  width: 336px;
   padding: 10px;
 }
 
