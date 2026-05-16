@@ -639,6 +639,65 @@ function hashText(value) {
   }
   return `h${(hash >>> 0).toString(16)}`;
 }
+function isFenceLine(line) {
+  const trimmed = line.trim();
+  return trimmed.startsWith("```") || trimmed.startsWith("~~~");
+}
+function getLineContexts(lines) {
+  let inFence = false;
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    const context = {
+      inFence,
+      blockquote: trimmed.startsWith(">")
+    };
+    if (!context.blockquote && isFenceLine(line)) {
+      inFence = !inFence;
+    }
+    return context;
+  });
+}
+function isStructuralControlLine(lines, contexts, index) {
+  const trimmed = lines[index]?.trim() ?? "";
+  if (!trimmed || contexts[index]?.inFence || contexts[index]?.blockquote) {
+    return false;
+  }
+  return /^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i.test(trimmed) || /^\[BRIDGE_META(?:\s+[^\]]*)?\]$/i.test(trimmed) || /^\[BRIDGE_INSTRUCTION\]$/i.test(trimmed);
+}
+function sanitizeRelayContent(value) {
+  const normalized = normalizeAssistantText(value);
+  if (!normalized) {
+    return "";
+  }
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  let end = lines.length;
+  while (end > 0 && !lines[end - 1]?.trim()) {
+    end -= 1;
+  }
+  const finalIndex = end - 1;
+  if (finalIndex < 0 || contexts[finalIndex]?.inFence || contexts[finalIndex]?.blockquote || !/^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i.test(lines[finalIndex]?.trim() ?? "")) {
+    return normalized;
+  }
+  end = finalIndex;
+  for (let index = end - 1; index >= 0; index -= 1) {
+    const trimmed = lines[index]?.trim() ?? "";
+    if (contexts[index]?.inFence || contexts[index]?.blockquote) {
+      break;
+    }
+    if (/^\[BRIDGE_INSTRUCTION\]$/i.test(trimmed)) {
+      end = index;
+      break;
+    }
+  }
+  while (end > 0 && !lines[end - 1]?.trim()) {
+    end -= 1;
+  }
+  if (end > 0 && isStructuralControlLine(lines, contexts, end - 1)) {
+    end -= 1;
+  }
+  return normalizeAssistantText(lines.slice(0, end).join("\n"));
+}
 function buildRelayEnvelope({
   sourceRole: _sourceRole,
   round: _round,
@@ -669,7 +728,7 @@ function buildRelayEnvelope({
     `${bridgeStatePrefix} ${DEFAULT_SETTINGS.stopMarker}`
   ];
   return [
-    normalizeAssistantText(message),
+    sanitizeRelayContent(message),
     "",
     ...metadataLines,
     ...instructionLines
@@ -678,12 +737,18 @@ function buildRelayEnvelope({
 function parseBridgeDirective(text, prefix = DEFAULT_SETTINGS.bridgeStatePrefix) {
   void prefix;
   const normalized = normalizeAssistantText(text);
-  const lines = normalized.split("\n").map((line) => line.trim()).filter(Boolean);
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const match = lines[index]?.match(/^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i);
-    if (match) {
-      return match[1].toUpperCase();
-    }
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  let finalIndex = lines.length - 1;
+  while (finalIndex >= 0 && !lines[finalIndex]?.trim()) {
+    finalIndex -= 1;
+  }
+  if (finalIndex < 0 || contexts[finalIndex]?.inFence || contexts[finalIndex]?.blockquote) {
+    return null;
+  }
+  const match = lines[finalIndex]?.trim().match(/^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i);
+  if (match) {
+    return match[1].toUpperCase();
   }
   return null;
 }
@@ -1733,121 +1798,86 @@ async function runStarterPreflight(state) {
   if (!threadActivity.result.generating) {
     return true;
   }
-  const timeoutMs = state.settings?.hopTimeoutMs ?? DEFAULT_SETTINGS.hopTimeoutMs;
-  const pollIntervalMs = state.settings?.pollIntervalMs ?? DEFAULT_SETTINGS.pollIntervalMs;
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeoutMs) {
-    const currentState = await getState();
-    if (currentState.phase !== PHASES.RUNNING) {
-      return false;
-    }
-    const activity = await requestThreadActivity(sourceBinding.tabId);
-    if (!activity.ok || !activity.result.generating) {
-      return true;
-    }
-    await updateState({
-      type: "set_runtime_activity",
-      activity: {
-        step: `waiting ${sourceRole} settle`,
-        sourceRole,
-        targetRole: otherRole(sourceRole),
-        pendingRound: currentState.round + 1,
-        transport: "preflight",
-        selector: "starter_generating"
-      }
-    });
-    await sleep(pollIntervalMs);
-  }
-  await updateState({
-    type: "stop_condition",
-    reason: STOP_REASONS.STARTER_SETTLE_TIMEOUT
+  await markPreflightPending({
+    state,
+    sourceRole,
+    targetRole: otherRole(sourceRole),
+    step: `waiting ${sourceRole} settle`,
+    selector: "starter_generating",
+    sample: `generating:true|assistant:${threadActivity.result.latestAssistantHash ?? "null"}`
   });
-  return false;
+  return true;
 }
 async function runTargetPreflight(targetRole, targetBinding, state, token) {
   if (!targetBinding) {
     return true;
   }
   const threadActivity = await requestThreadActivity(targetBinding.tabId);
-  if (!threadActivity.ok) {
-    const sourceRole2 = otherRole(targetRole);
-    await updateState({
-      type: "set_runtime_activity",
-      activity: {
-        step: `waiting ${targetRole} ready`,
-        sourceRole: sourceRole2,
-        targetRole,
-        pendingRound: state.round + 1,
-        transport: "preflight",
-        selector: "activity_check_failed"
-      }
-    });
-  } else if (!threadActivity.result.generating && threadActivity.result.composerAvailable) {
+  if (threadActivity.ok && !threadActivity.result.generating && threadActivity.result.composerAvailable) {
     return true;
   }
-  const timeoutMs = state.settings?.hopTimeoutMs ?? DEFAULT_SETTINGS.hopTimeoutMs;
-  const pollIntervalMs = state.settings?.pollIntervalMs ?? DEFAULT_SETTINGS.pollIntervalMs;
-  const startTime = Date.now();
   const sourceRole = otherRole(targetRole);
-  while (Date.now() - startTime < timeoutMs) {
-    if (token !== activeLoopToken) {
-      return false;
-    }
-    const currentState = await getState();
-    if (currentState.phase !== PHASES.RUNNING) {
-      return false;
-    }
-    const activity = await requestThreadActivity(targetBinding.tabId);
-    if (!activity.ok) {
-      await updateState({
-        type: "set_runtime_activity",
-        activity: {
-          step: `waiting ${targetRole} ready`,
-          sourceRole,
-          targetRole,
-          pendingRound: currentState.round + 1,
-          transport: "preflight",
-          selector: "activity_check_failed"
-        }
-      });
-      await sleep(pollIntervalMs);
-      continue;
-    }
-    if (!activity.result.generating && activity.result.composerAvailable) {
-      return true;
-    }
-    if (activity.result.generating) {
-      await updateState({
-        type: "set_runtime_activity",
-        activity: {
-          step: `waiting ${targetRole} ready`,
-          sourceRole,
-          targetRole,
-          pendingRound: currentState.round + 1,
-          transport: "preflight",
-          selector: "target_generating"
-        }
-      });
-    } else if (!activity.result.composerAvailable) {
-      await updateState({
-        type: "set_runtime_activity",
-        activity: {
-          step: `waiting ${targetRole} ready`,
-          sourceRole,
-          targetRole,
-          pendingRound: currentState.round + 1,
-          transport: "preflight",
-          selector: "target_busy"
-        }
-      });
-    }
-    await sleep(pollIntervalMs);
+  if (token !== activeLoopToken) {
+    return false;
   }
-  await updateState({
-    type: "stop_condition",
-    reason: STOP_REASONS.TARGET_SETTLE_TIMEOUT
+  await markPreflightPending({
+    state,
+    sourceRole,
+    targetRole,
+    step: `waiting ${targetRole} ready`,
+    selector: threadActivity.ok ? threadActivity.result.generating ? "target_generating" : "target_busy" : "activity_check_failed",
+    sample: threadActivity.ok ? `generating:${threadActivity.result.generating}|composer:${threadActivity.result.composerAvailable}` : "activity_check_failed"
   });
   return false;
+}
+async function runSourcePreflight(sourceRole, sourceBinding, state) {
+  if (!sourceBinding) {
+    return true;
+  }
+  const threadActivity = await requestThreadActivity(sourceBinding.tabId);
+  if (!threadActivity.ok || !threadActivity.result.generating) {
+    return true;
+  }
+  await markPreflightPending({
+    state,
+    sourceRole,
+    targetRole: otherRole(sourceRole),
+    step: `waiting ${sourceRole} settle`,
+    selector: "starter_generating",
+    sample: `generating:true|assistant:${threadActivity.result.latestAssistantHash ?? "null"}`
+  });
+  return false;
+}
+async function markPreflightPending({
+  state,
+  sourceRole,
+  targetRole,
+  step,
+  selector,
+  sample
+}) {
+  await updateState({
+    type: "set_runtime_activity",
+    activity: {
+      step,
+      sourceRole,
+      targetRole,
+      pendingRound: state.round + 1,
+      transport: "preflight",
+      selector
+    }
+  });
+  addRuntimeEvent({
+    phaseStep: "preflight_pending",
+    sourceRole,
+    targetRole,
+    round: state.round + 1,
+    dispatchReadbackSummary: step,
+    sendTriggerMode: "not_triggered",
+    verificationBaseline: "preflight",
+    verificationPollSample: sample,
+    verificationVerdict: selector
+  });
 }
 async function stopSession() {
   return updateState({ type: "stop", reason: STOP_REASONS.USER_STOP });
@@ -1998,6 +2028,13 @@ async function runRelayLoop(token, settings) {
     const sourceTab = await ensureRunnableBinding(sourceRole, sourceBinding);
     const targetTab = await ensureRunnableBinding(targetRole, targetBinding);
     if (!sourceTab || !targetTab) {
+      return;
+    }
+    if (!await shouldContinueRelayLoop(token)) {
+      return;
+    }
+    const sourcePreflight = await runSourcePreflight(sourceRole, sourceBinding, state);
+    if (!sourcePreflight) {
       return;
     }
     if (!await shouldContinueRelayLoop(token)) {

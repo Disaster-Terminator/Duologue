@@ -12,7 +12,8 @@ const {
   formatNextHop,
   guardReasonToStopReason,
   hashText,
-  parseBridgeDirective
+  parseBridgeDirective,
+  sanitizeRelayContent
 } = await importExtensionModule("core/relay-core");
 
 function buildVerificationInputFromObservationSamples({ baseline, current, relayPayloadText, expectedHopId }) {
@@ -116,6 +117,83 @@ test("parseBridgeDirective reads the final machine-readable state line", () => {
   assert.equal(parseBridgeDirective("hello\n[BRIDGE_STATE] CONTINUE"), "CONTINUE");
   assert.equal(parseBridgeDirective("hello\n[BRIDGE_STATE] FREEZE"), "FREEZE");
   assert.equal(parseBridgeDirective("hello"), null);
+});
+
+test("parseBridgeDirective ignores protocol literals outside the structural tail", () => {
+  assert.equal(
+    parseBridgeDirective("正文讨论 [BRIDGE_STATE] FREEZE 不是控制信号"),
+    null
+  );
+  assert.equal(
+    parseBridgeDirective("正文\n[BRIDGE_STATE] FREEZE\n后面还有解释"),
+    null
+  );
+  assert.equal(
+    parseBridgeDirective("> [BRIDGE_STATE] FREEZE"),
+    null
+  );
+  assert.equal(
+    parseBridgeDirective("```text\n[BRIDGE_STATE] FREEZE\n```"),
+    null
+  );
+});
+
+test("sanitizeRelayContent strips only trailing structural bridge control blocks", () => {
+  const bridged = [
+    "正文保留",
+    "",
+    "[BRIDGE_META hop=s1-r1-test]",
+    "",
+    "[BRIDGE_INSTRUCTION]",
+    "继续上方桥接内容的讨论。",
+    "请在回复最后单独输出一行状态:",
+    "[BRIDGE_STATE] CONTINUE",
+    "或",
+    "[BRIDGE_STATE] FREEZE"
+  ].join("\n");
+
+  assert.equal(sanitizeRelayContent(bridged), "正文保留");
+});
+
+test("sanitizeRelayContent preserves meta protocol discussion and examples", () => {
+  const draft = [
+    "正文讨论 [BRIDGE_STATE] CONTINUE 应该被保留。",
+    "",
+    "> [BRIDGE_STATE] FREEZE",
+    "",
+    "```text",
+    "[BRIDGE_META hop=example]",
+    "[BRIDGE_INSTRUCTION]",
+    "[BRIDGE_STATE] FREEZE",
+    "```",
+    "",
+    "[BRIDGE_STATE] CONTINUE",
+    "后面还有普通解释文本"
+  ].join("\n");
+
+  assert.equal(sanitizeRelayContent(draft), draft);
+});
+
+test("buildRelayEnvelope does not accumulate prior bridge control blocks", () => {
+  const previous = buildRelayEnvelope({
+    sourceRole: "A",
+    round: 1,
+    message: "first reply",
+    hopId: "s1-r1-old"
+  });
+  const next = buildRelayEnvelope({
+    sourceRole: "B",
+    round: 2,
+    message: previous,
+    hopId: "s1-r2-new"
+  });
+
+  assert.equal(next.includes("[BRIDGE_META hop=s1-r1-old]"), false);
+  assert.ok(next.includes("[BRIDGE_META hop=s1-r2-new]"));
+  assert.equal(next.match(/\[BRIDGE_INSTRUCTION\]/g)?.length, 1);
+  assert.equal(next.match(/\[BRIDGE_STATE\] CONTINUE/g)?.length, 1);
+  assert.equal(next.match(/\[BRIDGE_STATE\] FREEZE/g)?.length, 1);
+  assert.ok(next.startsWith("first reply\n\n[BRIDGE_META hop=s1-r2-new]"));
 });
 
 test("evaluateSubmissionVerification accepts compact bridge meta hop binding", () => {

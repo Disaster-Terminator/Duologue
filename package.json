@@ -5,7 +5,7 @@
     "test": "node --test tests/*.test.mjs",
     "check": "pnpm run gate:local",
     "gate:commit": "pnpm run typecheck",
-    "gate:worktree": "pnpm run typecheck && pnpm test && pnpm run build",
+    "gate:worktree": "pnpm run typecheck && pnpm run build && pnpm test",
     "gate:local": "pnpm run gate:worktree && pnpm run verify:dist",
     "check:generated": "pnpm run build && pnpm run verify:dist",
     "verify:dist": "git diff --exit-code -- dist/extension",

@@ -70,18 +70,29 @@
       return false;
     }
 
-    const lines = normalized
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    for (let index = lines.length - 1; index >= 0; index -= 1) {
-      if (/^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i.test(lines[index] ?? "")) {
-        return true;
+    const lines = normalized.split("\n");
+    let inFence = false;
+    let finalIndex = -1;
+    const lineStates = lines.map((line, index) => {
+      const trimmed = line.trim();
+      const state = {
+        inFence,
+        blockquote: trimmed.startsWith(">")
+      };
+      if (trimmed) {
+        finalIndex = index;
       }
+      if (!state.blockquote && (trimmed.startsWith("```") || trimmed.startsWith("~~~"))) {
+        inFence = !inFence;
+      }
+      return state;
+    });
+
+    if (finalIndex < 0 || lineStates[finalIndex]?.inFence || lineStates[finalIndex]?.blockquote) {
+      return false;
     }
 
-    return false;
+    return /^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i.test(lines[finalIndex]?.trim() ?? "");
   }
 
   function isLatestUserAfterLatestAssistantFromDoc(root = document) {

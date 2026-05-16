@@ -951,42 +951,16 @@ async function runStarterPreflight(state: RuntimeState): Promise<boolean> {
     return true;
   }
 
-  const timeoutMs = state.settings?.hopTimeoutMs ?? DEFAULT_SETTINGS.hopTimeoutMs;
-  const pollIntervalMs = state.settings?.pollIntervalMs ?? DEFAULT_SETTINGS.pollIntervalMs;
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
-    const currentState = await getState();
-    if (currentState.phase !== PHASES.RUNNING) {
-      return false;
-    }
-
-    const activity = await requestThreadActivity(sourceBinding.tabId);
-    if (!activity.ok || !activity.result.generating) {
-      return true;
-    }
-
-    await updateState({
-      type: "set_runtime_activity",
-      activity: {
-        step: `waiting ${sourceRole} settle`,
-        sourceRole,
-        targetRole: otherRole(sourceRole),
-        pendingRound: currentState.round + 1,
-        transport: "preflight",
-        selector: "starter_generating"
-      }
-    });
-
-    await sleep(pollIntervalMs);
-  }
-
-  await updateState({
-    type: "stop_condition",
-    reason: STOP_REASONS.STARTER_SETTLE_TIMEOUT
+  await markPreflightPending({
+    state,
+    sourceRole,
+    targetRole: otherRole(sourceRole),
+    step: `waiting ${sourceRole} settle`,
+    selector: "starter_generating",
+    sample: `generating:true|assistant:${threadActivity.result.latestAssistantHash ?? "null"}`
   });
 
-  return false;
+  return true;
 }
 
 async function runTargetPreflight(
@@ -1000,94 +974,98 @@ async function runTargetPreflight(
   }
 
   const threadActivity = await requestThreadActivity(targetBinding.tabId);
-  if (!threadActivity.ok) {
-    const sourceRole = otherRole(targetRole);
-    await updateState({
-      type: "set_runtime_activity",
-      activity: {
-        step: `waiting ${targetRole} ready`,
-        sourceRole,
-        targetRole,
-        pendingRound: state.round + 1,
-        transport: "preflight",
-        selector: "activity_check_failed"
-      }
-    });
-  } else if (!threadActivity.result.generating && threadActivity.result.composerAvailable) {
+  if (threadActivity.ok && !threadActivity.result.generating && threadActivity.result.composerAvailable) {
     return true;
   }
 
-  const timeoutMs = state.settings?.hopTimeoutMs ?? DEFAULT_SETTINGS.hopTimeoutMs;
-  const pollIntervalMs = state.settings?.pollIntervalMs ?? DEFAULT_SETTINGS.pollIntervalMs;
-  const startTime = Date.now();
   const sourceRole = otherRole(targetRole);
 
-  while (Date.now() - startTime < timeoutMs) {
-    if (token !== activeLoopToken) {
-      return false;
-    }
-
-    const currentState = await getState();
-    if (currentState.phase !== PHASES.RUNNING) {
-      return false;
-    }
-
-    const activity = await requestThreadActivity(targetBinding.tabId);
-    if (!activity.ok) {
-      await updateState({
-        type: "set_runtime_activity",
-        activity: {
-          step: `waiting ${targetRole} ready`,
-          sourceRole,
-          targetRole,
-          pendingRound: currentState.round + 1,
-          transport: "preflight",
-          selector: "activity_check_failed"
-        }
-      });
-      await sleep(pollIntervalMs);
-      continue;
-    }
-
-    if (!activity.result.generating && activity.result.composerAvailable) {
-      return true;
-    }
-
-    if (activity.result.generating) {
-      await updateState({
-        type: "set_runtime_activity",
-        activity: {
-          step: `waiting ${targetRole} ready`,
-          sourceRole,
-          targetRole,
-          pendingRound: currentState.round + 1,
-          transport: "preflight",
-          selector: "target_generating"
-        }
-      });
-    } else if (!activity.result.composerAvailable) {
-      await updateState({
-        type: "set_runtime_activity",
-        activity: {
-          step: `waiting ${targetRole} ready`,
-          sourceRole,
-          targetRole,
-          pendingRound: currentState.round + 1,
-          transport: "preflight",
-          selector: "target_busy"
-        }
-      });
-    }
-
-    await sleep(pollIntervalMs);
+  if (token !== activeLoopToken) {
+    return false;
   }
 
-  await updateState({
-    type: "stop_condition",
-    reason: STOP_REASONS.TARGET_SETTLE_TIMEOUT
+  await markPreflightPending({
+    state,
+    sourceRole,
+    targetRole,
+    step: `waiting ${targetRole} ready`,
+    selector: threadActivity.ok
+      ? threadActivity.result.generating
+        ? "target_generating"
+        : "target_busy"
+      : "activity_check_failed",
+    sample: threadActivity.ok
+      ? `generating:${threadActivity.result.generating}|composer:${threadActivity.result.composerAvailable}`
+      : "activity_check_failed"
   });
 
   return false;
+}
+
+async function runSourcePreflight(
+  sourceRole: BridgeRole,
+  sourceBinding: RuntimeState["bindings"][BridgeRole],
+  state: RuntimeState
+): Promise<boolean> {
+  if (!sourceBinding) {
+    return true;
+  }
+
+  const threadActivity = await requestThreadActivity(sourceBinding.tabId);
+  if (!threadActivity.ok || !threadActivity.result.generating) {
+    return true;
+  }
+
+  await markPreflightPending({
+    state,
+    sourceRole,
+    targetRole: otherRole(sourceRole),
+    step: `waiting ${sourceRole} settle`,
+    selector: "starter_generating",
+    sample: `generating:true|assistant:${threadActivity.result.latestAssistantHash ?? "null"}`
+  });
+
+  return false;
+}
+
+async function markPreflightPending({
+  state,
+  sourceRole,
+  targetRole,
+  step,
+  selector,
+  sample
+}: {
+  state: RuntimeState;
+  sourceRole: BridgeRole;
+  targetRole: BridgeRole;
+  step: string;
+  selector: string;
+  sample: string;
+}): Promise<void> {
+  await updateState({
+    type: "set_runtime_activity",
+    activity: {
+      step,
+      sourceRole,
+      targetRole,
+      pendingRound: state.round + 1,
+      transport: "preflight",
+      selector
+    }
+  });
+
+  addRuntimeEvent({
+    phaseStep: "preflight_pending",
+    sourceRole,
+    targetRole,
+    round: state.round + 1,
+    dispatchReadbackSummary: step,
+    sendTriggerMode: "not_triggered",
+    verificationBaseline: "preflight",
+    verificationPollSample: sample,
+    verificationVerdict: selector
+  });
 }
 
 async function stopSession(): Promise<RuntimeState> {
@@ -1279,10 +1257,19 @@ export async function runRelayLoop(token: number, settings: RuntimeSettings): Pr
       return;
     }
 
+    const sourcePreflight = await runSourcePreflight(sourceRole, sourceBinding, state);
+    if (!sourcePreflight) {
+      return;
+    }
+
+    if (!(await shouldContinueRelayLoop(token))) {
+      return;
+    }
+
     // P0-1: Target-side preflight - check target is ready to receive
     const targetPreflight = await runTargetPreflight(targetRole, targetBinding, state, token);
     if (!targetPreflight) {
-      return; // Target not ready, stop condition already set
+      return;
     }
 
     if (!(await shouldContinueRelayLoop(token))) {

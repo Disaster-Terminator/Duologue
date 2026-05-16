@@ -229,6 +229,36 @@ test("isReplyGenerationInProgressFromDoc stays true for streaming replies withou
   }
 });
 
+test("isReplyGenerationInProgressFromDoc ignores quoted and code-fenced bridge directives", () => {
+  const stopButton = createVisibleButton();
+  const mockDoc = {
+    querySelector: (selector) => {
+      if (selector.includes("stop-button") || selector.includes("stop-generating-button")) {
+        return stopButton;
+      }
+      return null;
+    }
+  };
+  const originalGlobal = globalThis.document;
+  const originalContextDocument = context.document;
+  globalThis.document = mockDoc;
+  context.document = mockDoc;
+
+  try {
+    assert.equal(
+      helpers.isReplyGenerationInProgressFromDoc("> [BRIDGE_STATE] CONTINUE"),
+      true
+    );
+    assert.equal(
+      helpers.isReplyGenerationInProgressFromDoc("```text\n[BRIDGE_STATE] CONTINUE\n```"),
+      true
+    );
+  } finally {
+    globalThis.document = originalGlobal;
+    context.document = originalContextDocument;
+  }
+});
+
 test("isReplyGenerationInProgressFromDoc ignores hidden stale stop controls", () => {
   const mockDoc = {
     querySelectorAll: (selector) => {

@@ -394,6 +394,115 @@ test("buildOverlaySnapshot uses source tab activity so overlay readiness matches
   assert.deepEqual(chromeEnvironment.callLog, [{ tabId: 101, type: "GET_THREAD_ACTIVITY" }]);
 });
 
+test("runRelayLoop leaves a generating starter as pending instead of stopping", async () => {
+  const state = createRunningState({
+    sourceRole: "B",
+    targetRole: "A",
+    targetTabId: null,
+    round: 1,
+    hopId: null,
+    stage: "pending"
+  });
+  state.settings.maxRounds = 4;
+  state.runtimeActivity.step = formatPendingBoundaryStep("B", "A");
+  persistState(state);
+
+  chromeEnvironment.setSendMessageHandler(async (tabId, message) => {
+    assert.equal(message.type, "GET_THREAD_ACTIVITY");
+    assert.equal(tabId, 99);
+    return {
+      ok: true,
+      result: {
+        sample: createObservationSample({
+          url: "https://chatgpt.com/c/thread-drift",
+          latestAssistantText: "still streaming",
+          generating: true
+        }),
+        generating: true,
+        latestAssistantHash: hashText("still streaming"),
+        latestUserHash: null,
+        composerText: "",
+        sendButtonReady: true,
+        composerAvailable: true
+      }
+    };
+  });
+
+  setActiveLoopTokenForTest(88);
+  await runRelayLoop(88, state.settings);
+
+  const finalState = getPersistedState();
+  assert.equal(finalState.phase, PHASES.RUNNING);
+  assert.equal(finalState.lastStopReason, null);
+  assert.equal(finalState.runtimeActivity.step, "waiting B settle");
+  assert.equal(finalState.runtimeActivity.selector, "starter_generating");
+  assert.equal(chromeEnvironment.callLog.some((entry) => entry.type === "SEND_RELAY_MESSAGE"), false);
+});
+
+test("runRelayLoop leaves a busy target as pending instead of stopping", async () => {
+  const state = createRunningState({
+    sourceRole: "A",
+    targetRole: "B",
+    targetTabId: null,
+    round: 1,
+    hopId: null,
+    stage: "pending"
+  });
+  state.settings.maxRounds = 4;
+  state.runtimeActivity.step = formatPendingBoundaryStep("A", "B");
+  persistState(state);
+
+  chromeEnvironment.setSendMessageHandler(async (tabId, message) => {
+    assert.equal(message.type, "GET_THREAD_ACTIVITY");
+    if (tabId === 1) {
+      return {
+        ok: true,
+        result: {
+          sample: createObservationSample({
+            url: "https://chatgpt.com/c/thread-a",
+            latestAssistantText: "source ready",
+            generating: false
+          }),
+          generating: false,
+          latestAssistantHash: hashText("source ready"),
+          latestUserHash: null,
+          composerText: "",
+          sendButtonReady: true,
+          composerAvailable: true
+        }
+      };
+    }
+
+    assert.equal(tabId, 99);
+    return {
+      ok: true,
+      result: {
+        sample: createObservationSample({
+          url: "https://chatgpt.com/c/thread-drift",
+          latestAssistantText: "target still busy",
+          generating: true
+        }),
+        generating: true,
+        latestAssistantHash: hashText("target still busy"),
+        latestUserHash: null,
+        composerText: "",
+        sendButtonReady: false,
+        composerAvailable: true
+      }
+    };
+  });
+
+  setActiveLoopTokenForTest(89);
+  await runRelayLoop(89, state.settings);
+
+  const finalState = getPersistedState();
+  assert.equal(finalState.phase, PHASES.RUNNING);
+  assert.equal(finalState.lastStopReason, null);
+  assert.equal(finalState.runtimeActivity.step, "waiting B ready");
+  assert.equal(finalState.runtimeActivity.selector, "target_generating");
+  assert.equal(chromeEnvironment.callLog.some((entry) => entry.type === "SEND_RELAY_MESSAGE"), false);
+});
+
 test("runRelayLoop resumes a verifying hop on the canonical target without re-sending", async () => {
   const hopId = "hop-verifying";
   const relayPayloadText = buildRelayEnvelope({

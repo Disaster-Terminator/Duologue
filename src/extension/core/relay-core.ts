@@ -52,6 +52,90 @@ export function hashText(value: unknown): string {
   return `h${(hash >>> 0).toString(16)}`;
 }
 
+function isFenceLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("```") || trimmed.startsWith("~~~");
+}
+
+function getLineContexts(lines: string[]): Array<{ inFence: boolean; blockquote: boolean }> {
+  let inFence = false;
+
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    const context = {
+      inFence,
+      blockquote: trimmed.startsWith(">")
+    };
+
+    if (!context.blockquote && isFenceLine(line)) {
+      inFence = !inFence;
+    }
+
+    return context;
+  });
+}
+
+function isStructuralControlLine(lines: string[], contexts: ReturnType<typeof getLineContexts>, index: number): boolean {
+  const trimmed = lines[index]?.trim() ?? "";
+  if (!trimmed || contexts[index]?.inFence || contexts[index]?.blockquote) {
+    return false;
+  }
+
+  return (
+    /^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i.test(trimmed) ||
+    /^\[BRIDGE_META(?:\s+[^\]]*)?\]$/i.test(trimmed) ||
+    /^\[BRIDGE_INSTRUCTION\]$/i.test(trimmed)
+  );
+}
+
+export function sanitizeRelayContent(value: unknown): string {
+  const normalized = normalizeAssistantText(value);
+  if (!normalized) {
+    return "";
+  }
+
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  let end = lines.length;
+
+  while (end > 0 && !lines[end - 1]?.trim()) {
+    end -= 1;
+  }
+
+  const finalIndex = end - 1;
+  if (
+    finalIndex < 0 ||
+    contexts[finalIndex]?.inFence ||
+    contexts[finalIndex]?.blockquote ||
+    !/^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i.test(lines[finalIndex]?.trim() ?? "")
+  ) {
+    return normalized;
+  }
+
+  end = finalIndex;
+  for (let index = end - 1; index >= 0; index -= 1) {
+    const trimmed = lines[index]?.trim() ?? "";
+    if (contexts[index]?.inFence || contexts[index]?.blockquote) {
+      break;
+    }
+
+    if (/^\[BRIDGE_INSTRUCTION\]$/i.test(trimmed)) {
+      end = index;
+      break;
+    }
+  }
+
+  while (end > 0 && !lines[end - 1]?.trim()) {
+    end -= 1;
+  }
+
+  if (end > 0 && isStructuralControlLine(lines, contexts, end - 1)) {
+    end -= 1;
+  }
+
+  return normalizeAssistantText(lines.slice(0, end).join("\n"));
+}
+
 export function buildRelayEnvelope({
   sourceRole: _sourceRole,
   round: _round,
@@ -86,7 +170,7 @@ export function buildRelayEnvelope({
         ];
 
   return [
-    normalizeAssistantText(message),
+    sanitizeRelayContent(message),
     "",
     ...metadataLines,
     ...instructionLines
@@ -100,16 +184,20 @@ export function parseBridgeDirective(
   void prefix;
 
   const normalized = normalizeAssistantText(text);
-  const lines = normalized
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  let finalIndex = lines.length - 1;
+  while (finalIndex >= 0 && !lines[finalIndex]?.trim()) {
+    finalIndex -= 1;
+  }
 
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const match = lines[index]?.match(/^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i);
-    if (match) {
-      return match[1].toUpperCase() as BridgeDirective;
-    }
+  if (finalIndex < 0 || contexts[finalIndex]?.inFence || contexts[finalIndex]?.blockquote) {
+    return null;
+  }
+
+  const match = lines[finalIndex]?.trim().match(/^\[BRIDGE_STATE\]\s+(CONTINUE|FREEZE)$/i);
+  if (match) {
+    return match[1].toUpperCase() as BridgeDirective;
   }
 
   return null;
