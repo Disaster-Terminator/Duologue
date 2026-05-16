@@ -62,6 +62,8 @@ interface PopupElements {
   pauseButton: HTMLButtonElement;
   resumeButton: HTMLButtonElement;
   stopButton: HTMLButtonElement;
+  sessionActionRow: HTMLElement;
+  recoveryActionRow: HTMLElement;
   clearTerminalButton: HTMLButtonElement;
   resumeSourceField: HTMLElement;
   copyDebugButton: HTMLButtonElement;
@@ -133,6 +135,8 @@ const elements: PopupElements = {
   pauseButton: requireElement<HTMLButtonElement>("#pauseButton"),
   resumeButton: requireElement<HTMLButtonElement>("#resumeButton"),
   stopButton: requireElement<HTMLButtonElement>("#stopButton"),
+  sessionActionRow: requireElement<HTMLElement>("#sessionActionRow"),
+  recoveryActionRow: requireElement<HTMLElement>("#recoveryActionRow"),
   clearTerminalButton: requireElement<HTMLButtonElement>("#clearTerminalButton"),
   resumeSourceField: requireElement<HTMLElement>("#resumeSourceField"),
   copyDebugButton: requireElement<HTMLButtonElement>("#copyDebugButton"),
@@ -409,7 +413,9 @@ function render(model: PopupModel): void {
   elements.pauseButton.disabled = !controls.canPause;
   elements.resumeButton.disabled = !controls.canResume;
   elements.stopButton.disabled = !controls.canStop;
-  elements.startButton.hidden = state.phase === "running" || state.phase === "paused";
+  elements.sessionActionRow.hidden = controls.canClearTerminal;
+  elements.recoveryActionRow.hidden = !controls.canClearTerminal;
+  elements.startButton.hidden = state.phase === "running" || state.phase === "paused" || controls.canClearTerminal;
   elements.pauseButton.hidden = state.phase !== "running";
   elements.resumeButton.hidden = state.phase !== "paused";
   elements.stopButton.hidden = state.phase !== "running" && state.phase !== "paused";

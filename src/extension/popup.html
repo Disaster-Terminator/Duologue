@@ -63,11 +63,13 @@
           <p class="popup__binding-value" id="currentTabStatus">-</p>
         </div>
         <div class="popup__primary-actions" id="primaryControls">
-          <div class="popup__action-row popup__action-row--primary">
+          <div class="popup__action-row popup__action-row--primary" id="sessionActionRow">
             <button type="button" class="popup__btn popup__btn--primary" id="startButton" data-copy="start">开始</button>
             <button type="button" class="popup__btn" id="pauseButton" data-copy="pause">暂停</button>
             <button type="button" class="popup__btn" id="resumeButton" data-copy="resume">恢复</button>
             <button type="button" class="popup__btn popup__btn--danger" id="stopButton" data-copy="stop">停止</button>
+          </div>
+          <div class="popup__action-row popup__action-row--recovery" id="recoveryActionRow" hidden>
             <button type="button" class="popup__btn popup__btn--primary" id="clearTerminalButton" data-copy="clearTerminal" hidden>清空终端</button>
           </div>
           <div class="popup__resume-choice" id="resumeSourceField" hidden>
