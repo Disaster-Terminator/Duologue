@@ -47,6 +47,7 @@ interface PopupElements {
   bindingA: HTMLElement;
   bindingB: HTMLElement;
   localeSelect: HTMLSelectElement;
+  relayModeSelect: HTMLSelectElement;
   maxRoundsValue: HTMLInputElement;
   maxRoundsEnabledCheckbox: HTMLInputElement;
   overlayEnabledCheckbox: HTMLInputElement;
@@ -117,6 +118,7 @@ const elements: PopupElements = {
   bindingA: requireElement<HTMLElement>("#bindingA"),
   bindingB: requireElement<HTMLElement>("#bindingB"),
   localeSelect: requireElement<HTMLSelectElement>("#localeSelect"),
+  relayModeSelect: requireElement<HTMLSelectElement>("#relayModeSelect"),
   maxRoundsValue: requireElement<HTMLInputElement>("#maxRoundsValue"),
   maxRoundsEnabledCheckbox: requireElement<HTMLInputElement>("#maxRoundsEnabledCheckbox"),
   overlayEnabledCheckbox: requireElement<HTMLInputElement>("#overlayEnabledCheckbox"),
@@ -331,6 +333,15 @@ function wireEvents(): void {
     });
   });
 
+  elements.relayModeSelect.addEventListener("change", () => {
+    void perform({
+      type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
+      settings: {
+        relayMode: elements.relayModeSelect.value === "plain" ? "plain" : "controlled"
+      }
+    });
+  });
+
   elements.defaultExpandedCheckbox.addEventListener("change", () => {
     void perform({
       type: MESSAGE_TYPES.SET_OVERLAY_COLLAPSED,
@@ -430,6 +441,8 @@ function render(model: PopupModel): void {
   elements.maxRoundsValue.min = String(minEditableMaxRounds);
   elements.maxRoundsValue.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
   elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
+  elements.relayModeSelect.value = state.settings.relayMode;
+  elements.relayModeSelect.disabled = !controls.canSetSettings;
 
   const maxRoundsToggle = elements.maxRoundsEnabledCheckbox.closest<HTMLElement>(".popup__toggle");
   if (maxRoundsToggle) {
@@ -447,6 +460,10 @@ function render(model: PopupModel): void {
   const starterOptions = elements.starterSelect.options;
   starterOptions[0].textContent = copy.starterA;
   starterOptions[1].textContent = copy.starterB;
+
+  const relayModeOptions = elements.relayModeSelect.options;
+  relayModeOptions[0].textContent = copy.relayModePlain;
+  relayModeOptions[1].textContent = copy.relayModeControlled;
 
   const overrideOptions = elements.overrideSelect.options;
   overrideOptions[0].textContent = copy.overrideNone;

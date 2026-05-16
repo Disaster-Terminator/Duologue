@@ -69,6 +69,18 @@ test("runtime settings preserve max rounds when only toggling the round limit", 
   assert.equal(state.settings.maxRoundsEnabled, false);
 });
 
+test("runtime settings can switch relay mode before starting", () => {
+  let state = createInitialState();
+  state = reduceState(state, {
+    type: "set_runtime_settings",
+    settings: {
+      relayMode: "plain"
+    }
+  });
+
+  assert.equal(state.settings.relayMode, "plain");
+});
+
 test("runtime settings only hot-increase max rounds while running", () => {
   let state = createInitialState();
   state = reduceState(state, { type: "set_binding", role: "A", binding: createBinding("A", 1) });
@@ -83,11 +95,13 @@ test("runtime settings only hot-increase max rounds while running", () => {
   state = reduceState(state, {
     type: "set_runtime_settings",
     settings: {
+      relayMode: "plain",
       maxRoundsEnabled: false,
       maxRounds: 8
     }
   });
 
+  assert.equal(state.settings.relayMode, "controlled");
   assert.equal(state.settings.maxRoundsEnabled, true);
   assert.equal(state.settings.maxRounds, 12);
 

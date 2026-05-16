@@ -328,9 +328,13 @@ function reduceSetRuntimeSettings(state: RuntimeState, event: SetRuntimeSettings
   const maxRoundsEnabled = "maxRoundsEnabled" in event.settings
     ? normalizeMaxRoundsEnabled(event.settings.maxRoundsEnabled)
     : state.settings.maxRoundsEnabled;
+  const relayMode = "relayMode" in event.settings
+    ? normalizeRelayMode(event.settings.relayMode)
+    : state.settings.relayMode;
   state.settings = {
     ...state.settings,
     ...event.settings,
+    relayMode,
     maxRoundsEnabled,
     maxRounds
   };
@@ -617,6 +621,10 @@ function normalizeMaxRoundsEnabled(value: unknown): boolean {
     return DEFAULT_SETTINGS.maxRoundsEnabled;
   }
   return value;
+}
+
+function normalizeRelayMode(value: unknown): RuntimeSettings["relayMode"] {
+  return value === "plain" ? "plain" : DEFAULT_SETTINGS.relayMode;
 }
 
 function normalizeBinding(binding: Partial<RuntimeBinding> | null | undefined): RuntimeBinding | null {

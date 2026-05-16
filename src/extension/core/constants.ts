@@ -72,6 +72,7 @@ export const MESSAGE_TYPES = Object.freeze({
 });
 
 export const DEFAULT_SETTINGS = Object.freeze({
+  relayMode: "controlled",
   maxRoundsEnabled: true,
   maxRounds: 8,
   hopTimeoutMs: 60000,

@@ -13,6 +13,7 @@ interface RelayEnvelopeInput {
   round: number;
   message: unknown;
   hopId?: string | null;
+  relayMode?: "controlled" | "plain";
   continueMarker?: string;
   bridgeStatePrefix?: string;
   instructionLocale?: "zh-CN" | "en";
@@ -22,12 +23,14 @@ interface PreSendGuardInput {
   sourceText: unknown;
   sourceHash?: string | null;
   lastForwardedSourceHash?: string | null;
+  relayMode?: "controlled" | "plain";
   stopMarker?: string;
 }
 
 interface PostHopGuardInput {
   assistantText: unknown;
   round: number;
+  relayMode?: "controlled" | "plain";
   maxRoundsEnabled?: boolean;
   maxRounds: number;
   stopMarker?: string;
@@ -141,10 +144,15 @@ export function buildRelayEnvelope({
   round: _round,
   message,
   hopId = null,
+  relayMode = DEFAULT_SETTINGS.relayMode,
   continueMarker = DEFAULT_SETTINGS.continueMarker,
   bridgeStatePrefix = DEFAULT_SETTINGS.bridgeStatePrefix,
   instructionLocale = "zh-CN"
 }: RelayEnvelopeInput): string {
+  if (relayMode === "plain") {
+    return sanitizeRelayContent(message);
+  }
+
   const metadataLines = [
     ...(hopId ? [`[BRIDGE_META hop=${hopId}]`, ""] : [])
   ];
@@ -207,6 +215,7 @@ export function evaluatePreSendGuard({
   sourceText,
   sourceHash,
   lastForwardedSourceHash,
+  relayMode = DEFAULT_SETTINGS.relayMode,
   stopMarker = DEFAULT_SETTINGS.stopMarker
 }: PreSendGuardInput): PreSendGuardResult {
   const normalized = normalizeAssistantText(sourceText);
@@ -219,7 +228,7 @@ export function evaluatePreSendGuard({
     };
   }
 
-  if (parseBridgeDirective(normalized) === stopMarker) {
+  if (relayMode !== "plain" && parseBridgeDirective(normalized) === stopMarker) {
     return {
       shouldStop: true,
       reason: "stop_marker",
@@ -245,11 +254,12 @@ export function evaluatePreSendGuard({
 export function evaluatePostHopGuard({
   assistantText,
   round,
+  relayMode = DEFAULT_SETTINGS.relayMode,
   maxRoundsEnabled = DEFAULT_SETTINGS.maxRoundsEnabled,
   maxRounds,
   stopMarker = DEFAULT_SETTINGS.stopMarker
 }: PostHopGuardInput): PostHopGuardResult {
-  if (parseBridgeDirective(assistantText) === stopMarker) {
+  if (relayMode !== "plain" && parseBridgeDirective(assistantText) === stopMarker) {
     return {
       shouldStop: true,
       reason: "stop_marker"
@@ -289,6 +299,7 @@ export function formatNextHop(sourceRole: BridgeRole): string {
 }
 
 export interface SubmissionVerificationInput {
+  relayMode?: "controlled" | "plain";
   baselineUserHash: string | null;
   baselineGenerating: boolean;
   baselineLatestUserText: string | null;
@@ -324,6 +335,8 @@ export interface SubmissionVerificationResult {
     baselineLatestUserText: string | null;
     currentLatestUserText: string | null;
     textOverlapRatio: number;
+    exactPayloadMatch: boolean;
+    exactPlainPayloadMatch: boolean;
     containsBridgeContext: boolean;
     extractedHopId: string | null;
     expectedHopId: string | null;
@@ -338,7 +351,20 @@ export interface SubmissionAcceptanceGateResult {
 }
 
 function containsBridgeEnvelope(text: string): boolean {
-  return text.includes("[BRIDGE_META") || text.includes("[BRIDGE_CONTEXT]") || text.includes("[来自");
+  const normalized = normalizeAssistantText(text);
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  return lines.some((line, index) => {
+    if (contexts[index]?.inFence || contexts[index]?.blockquote) {
+      return false;
+    }
+    const trimmed = line.trim();
+    return (
+      /^\[BRIDGE_META(?:\s+[^\]]*)?\]$/i.test(trimmed) ||
+      /^\[BRIDGE_CONTEXT\]/i.test(trimmed) ||
+      trimmed.startsWith("[来自")
+    );
+  });
 }
 
 function calculateTextOverlap(textA: string, textB: string): number {
@@ -368,9 +394,16 @@ function calculateTextOverlap(textA: string, textB: string): number {
 
 function extractHopIdFromPayload(relayPayload: string): string | null {
   const normalized = normalizeAssistantText(relayPayload);
-  const metaMatch = normalized.match(/\[BRIDGE_META[^\]]*\bhop=([^\s\]]+)/i);
-  if (metaMatch?.[1]) {
-    return metaMatch[1];
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  for (let index = 0; index < lines.length; index += 1) {
+    if (contexts[index]?.inFence || contexts[index]?.blockquote) {
+      continue;
+    }
+    const metaMatch = lines[index]?.trim().match(/^\[BRIDGE_META[^\]]*\bhop=([^\s\]]+)\]$/i);
+    if (metaMatch?.[1]) {
+      return metaMatch[1];
+    }
   }
 
   const legacyMatch = normalized.match(/(?:^|\n)hop:\s*([^\s\n]+)/i);
@@ -440,6 +473,10 @@ function analyzePayloadCorrelation(
 
   const normalizedLatest = normalizeAssistantText(latestUserText);
   const normalizedPayload = normalizeAssistantText(relayPayloadText);
+  if (normalizedLatest === normalizedPayload) {
+    return "strong";
+  }
+
   const overlap = calculateTextOverlap(normalizedLatest, normalizedPayload);
 
   if (overlap >= 0.5) {
@@ -498,8 +535,8 @@ export function evaluateSubmissionAcceptanceGate(
     result.details.currentUserHash !== result.details.baselineUserHash;
   const acceptedEquivalentEvidence =
     result.userTurnChanged &&
-    result.hopBindingStrength === "strong" &&
-    result.payloadCorrelationStrength === "strong";
+    result.payloadCorrelationStrength === "strong" &&
+    (result.hopBindingStrength === "strong" || result.details.exactPlainPayloadMatch);
 
   if (acceptedEquivalentEvidence) {
     if (userHashChanged) {
@@ -586,7 +623,8 @@ export function evaluateSubmissionVerification(input: SubmissionVerificationInpu
     currentGenerating,
     currentLatestUserText,
     relayPayloadText,
-    expectedHopId
+    expectedHopId,
+    relayMode = DEFAULT_SETTINGS.relayMode
   } = input;
 
   const userTurnChanged = analyzeUserTurnChange(baselineLatestUserText, currentLatestUserText);
@@ -617,6 +655,9 @@ export function evaluateSubmissionVerification(input: SubmissionVerificationInpu
     normalizeAssistantText(currentLatestUserText ?? ""),
     normalizeAssistantText(relayPayloadText)
   );
+  const exactPayloadMatch =
+    normalizeAssistantText(currentLatestUserText ?? "") === normalizeAssistantText(relayPayloadText);
+  const exactPlainPayloadMatch = relayMode === "plain" && exactPayloadMatch;
 
   const userHashChanged = currentUserHash !== null && currentUserHash !== baselineUserHash;
 
@@ -628,6 +669,8 @@ export function evaluateSubmissionVerification(input: SubmissionVerificationInpu
     baselineLatestUserText,
     currentLatestUserText,
     textOverlapRatio,
+    exactPayloadMatch,
+    exactPlainPayloadMatch,
     containsBridgeContext,
     extractedHopId,
     expectedHopId: expectedHopId ?? null
@@ -647,10 +690,10 @@ export function evaluateSubmissionVerification(input: SubmissionVerificationInpu
     };
   }
 
-  if (userHashChanged && hopBindingStrength === "strong") {
+  if (userHashChanged && (hopBindingStrength === "strong" || exactPlainPayloadMatch)) {
     return {
       verified: true,
-      reason: "payload_accepted_strong",
+      reason: hopBindingStrength === "strong" ? "payload_accepted_strong" : "payload_accepted_exact",
       hopBindingStrength,
       payloadCorrelationStrength: "strong",
       generationSettlementStrength,
@@ -675,10 +718,17 @@ export function evaluateSubmissionVerification(input: SubmissionVerificationInpu
     };
   }
 
-  if (generationSettlementStrength === "strong" && userTurnChanged && payloadCorrelationStrength === "strong") {
+  if (
+    generationSettlementStrength === "strong" &&
+    userTurnChanged &&
+    payloadCorrelationStrength === "strong" &&
+    (hopBindingStrength === "strong" || exactPlainPayloadMatch)
+  ) {
     return {
       verified: true,
-      reason: "generation_started_with_hop_bound_payload",
+      reason: hopBindingStrength === "strong"
+        ? "generation_started_with_hop_bound_payload"
+        : "generation_started_with_exact_payload",
       hopBindingStrength,
       payloadCorrelationStrength,
       generationSettlementStrength,

@@ -55,6 +55,10 @@ export interface PopupCopy {
   labelMaxRoundsLimit: string;
   labelMaxRounds: string;
   maxRoundsHelp: string;
+  labelRelayMode: string;
+  relayModePlain: string;
+  relayModeControlled: string;
+  relayModeHelp: string;
   roundUnit: string;
   labelOverride: string;
   labelResumeSource: string;
@@ -158,6 +162,10 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     labelMaxRoundsLimit: "轮数限制",
     labelMaxRounds: "桥接轮数",
     maxRoundsHelp: "开启后到达目标轮数自动停止；关闭后显示为 ∞。",
+    labelRelayMode: "桥接模式",
+    relayModePlain: "纯内容",
+    relayModeControlled: "受控",
+    relayModeHelp: "纯内容不追加控制尾巴；受控模式要求模型输出状态行。",
     roundUnit: "轮",
     labelOverride: "暂停时下一跳覆盖",
     labelResumeSource: "恢复从",
@@ -268,6 +276,10 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     labelMaxRoundsLimit: "Round limit",
     labelMaxRounds: "Bridge rounds",
     maxRoundsHelp: "When enabled, stops after the selected count; disabled shows ∞.",
+    labelRelayMode: "Relay mode",
+    relayModePlain: "Plain",
+    relayModeControlled: "Controlled",
+    relayModeHelp: "Plain sends content only; Controlled asks the model for a status line.",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
     labelResumeSource: "Resume from",

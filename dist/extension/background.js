@@ -131,6 +131,7 @@ var MESSAGE_TYPES = Object.freeze({
   REQUEST_OPEN_POPUP: "REQUEST_OPEN_POPUP"
 });
 var DEFAULT_SETTINGS = Object.freeze({
+  relayMode: "controlled",
   maxRoundsEnabled: true,
   maxRounds: 8,
   hopTimeoutMs: 6e4,
@@ -330,9 +331,11 @@ function reduceSetRuntimeSettings(state, event) {
   }
   const maxRounds = "maxRounds" in event.settings ? normalizeMaxRounds(event.settings.maxRounds) : state.settings.maxRounds;
   const maxRoundsEnabled = "maxRoundsEnabled" in event.settings ? normalizeMaxRoundsEnabled(event.settings.maxRoundsEnabled) : state.settings.maxRoundsEnabled;
+  const relayMode = "relayMode" in event.settings ? normalizeRelayMode(event.settings.relayMode) : state.settings.relayMode;
   state.settings = {
     ...state.settings,
     ...event.settings,
+    relayMode,
     maxRoundsEnabled,
     maxRounds
   };
@@ -568,6 +571,9 @@ function normalizeMaxRoundsEnabled(value) {
   }
   return value;
 }
+function normalizeRelayMode(value) {
+  return value === "plain" ? "plain" : DEFAULT_SETTINGS.relayMode;
+}
 function normalizeBinding(binding) {
   if (!binding || !isBridgeRole(binding.role) || !isTabId(binding.tabId)) {
     return null;
@@ -703,10 +709,14 @@ function buildRelayEnvelope({
   round: _round,
   message,
   hopId = null,
+  relayMode = DEFAULT_SETTINGS.relayMode,
   continueMarker = DEFAULT_SETTINGS.continueMarker,
   bridgeStatePrefix = DEFAULT_SETTINGS.bridgeStatePrefix,
   instructionLocale = "zh-CN"
 }) {
+  if (relayMode === "plain") {
+    return sanitizeRelayContent(message);
+  }
   const metadataLines = [
     ...hopId ? [`[BRIDGE_META hop=${hopId}]`, ""] : []
   ];
@@ -756,6 +766,7 @@ function evaluatePreSendGuard({
   sourceText,
   sourceHash,
   lastForwardedSourceHash,
+  relayMode = DEFAULT_SETTINGS.relayMode,
   stopMarker = DEFAULT_SETTINGS.stopMarker
 }) {
   const normalized = normalizeAssistantText(sourceText);
@@ -766,7 +777,7 @@ function evaluatePreSendGuard({
       isEmpty: true
     };
   }
-  if (parseBridgeDirective(normalized) === stopMarker) {
+  if (relayMode !== "plain" && parseBridgeDirective(normalized) === stopMarker) {
     return {
       shouldStop: true,
       reason: "stop_marker",
@@ -789,11 +800,12 @@ function evaluatePreSendGuard({
 function evaluatePostHopGuard({
   assistantText,
   round,
+  relayMode = DEFAULT_SETTINGS.relayMode,
   maxRoundsEnabled = DEFAULT_SETTINGS.maxRoundsEnabled,
   maxRounds,
   stopMarker = DEFAULT_SETTINGS.stopMarker
 }) {
-  if (parseBridgeDirective(assistantText) === stopMarker) {
+  if (relayMode !== "plain" && parseBridgeDirective(assistantText) === stopMarker) {
     return {
       shouldStop: true,
       reason: "stop_marker"
@@ -826,7 +838,16 @@ function formatNextHop(sourceRole) {
   return `${sourceRole} -> ${otherRole(sourceRole)}`;
 }
 function containsBridgeEnvelope(text) {
-  return text.includes("[BRIDGE_META") || text.includes("[BRIDGE_CONTEXT]") || text.includes("[\u6765\u81EA");
+  const normalized = normalizeAssistantText(text);
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  return lines.some((line, index) => {
+    if (contexts[index]?.inFence || contexts[index]?.blockquote) {
+      return false;
+    }
+    const trimmed = line.trim();
+    return /^\[BRIDGE_META(?:\s+[^\]]*)?\]$/i.test(trimmed) || /^\[BRIDGE_CONTEXT\]/i.test(trimmed) || trimmed.startsWith("[\u6765\u81EA");
+  });
 }
 function calculateTextOverlap(textA, textB) {
   if (!textA || !textB) {
@@ -849,9 +870,16 @@ function calculateTextOverlap(textA, textB) {
 }
 function extractHopIdFromPayload(relayPayload) {
   const normalized = normalizeAssistantText(relayPayload);
-  const metaMatch = normalized.match(/\[BRIDGE_META[^\]]*\bhop=([^\s\]]+)/i);
-  if (metaMatch?.[1]) {
-    return metaMatch[1];
+  const lines = normalized.split("\n");
+  const contexts = getLineContexts(lines);
+  for (let index = 0; index < lines.length; index += 1) {
+    if (contexts[index]?.inFence || contexts[index]?.blockquote) {
+      continue;
+    }
+    const metaMatch = lines[index]?.trim().match(/^\[BRIDGE_META[^\]]*\bhop=([^\s\]]+)\]$/i);
+    if (metaMatch?.[1]) {
+      return metaMatch[1];
+    }
   }
   const legacyMatch = normalized.match(/(?:^|\n)hop:\s*([^\s\n]+)/i);
   return legacyMatch?.[1] ?? null;
@@ -895,6 +923,9 @@ function analyzePayloadCorrelation(latestUserText, relayPayloadText, hopBindingS
   }
   const normalizedLatest = normalizeAssistantText(latestUserText);
   const normalizedPayload = normalizeAssistantText(relayPayloadText);
+  if (normalizedLatest === normalizedPayload) {
+    return "strong";
+  }
   const overlap = calculateTextOverlap(normalizedLatest, normalizedPayload);
   if (overlap >= 0.5) {
     return "weak";
@@ -927,7 +958,7 @@ function analyzeGenerationSettlement(baselineGenerating, currentGenerating) {
 }
 function evaluateSubmissionAcceptanceGate(result) {
   const userHashChanged = result.details.currentUserHash !== null && result.details.currentUserHash !== result.details.baselineUserHash;
-  const acceptedEquivalentEvidence = result.userTurnChanged && result.hopBindingStrength === "strong" && result.payloadCorrelationStrength === "strong";
+  const acceptedEquivalentEvidence = result.userTurnChanged && result.payloadCorrelationStrength === "strong" && (result.hopBindingStrength === "strong" || result.details.exactPlainPayloadMatch);
   if (acceptedEquivalentEvidence) {
     if (userHashChanged) {
       return {
@@ -1001,7 +1032,8 @@ function evaluateSubmissionVerification(input) {
     currentGenerating,
     currentLatestUserText,
     relayPayloadText,
-    expectedHopId
+    expectedHopId,
+    relayMode = DEFAULT_SETTINGS.relayMode
   } = input;
   const userTurnChanged = analyzeUserTurnChange(baselineLatestUserText, currentLatestUserText);
   const userTurnHopBinding = analyzeUserTurnHopBinding(
@@ -1027,6 +1059,8 @@ function evaluateSubmissionVerification(input) {
     normalizeAssistantText(currentLatestUserText ?? ""),
     normalizeAssistantText(relayPayloadText)
   );
+  const exactPayloadMatch = normalizeAssistantText(currentLatestUserText ?? "") === normalizeAssistantText(relayPayloadText);
+  const exactPlainPayloadMatch = relayMode === "plain" && exactPayloadMatch;
   const userHashChanged = currentUserHash !== null && currentUserHash !== baselineUserHash;
   const baseDetails = {
     baselineUserHash,
@@ -1036,6 +1070,8 @@ function evaluateSubmissionVerification(input) {
     baselineLatestUserText,
     currentLatestUserText,
     textOverlapRatio,
+    exactPayloadMatch,
+    exactPlainPayloadMatch,
     containsBridgeContext,
     extractedHopId,
     expectedHopId: expectedHopId ?? null
@@ -1053,10 +1089,10 @@ function evaluateSubmissionVerification(input) {
       details: baseDetails
     };
   }
-  if (userHashChanged && hopBindingStrength === "strong") {
+  if (userHashChanged && (hopBindingStrength === "strong" || exactPlainPayloadMatch)) {
     return {
       verified: true,
-      reason: "payload_accepted_strong",
+      reason: hopBindingStrength === "strong" ? "payload_accepted_strong" : "payload_accepted_exact",
       hopBindingStrength,
       payloadCorrelationStrength: "strong",
       generationSettlementStrength,
@@ -1079,10 +1115,10 @@ function evaluateSubmissionVerification(input) {
       details: baseDetails
     };
   }
-  if (generationSettlementStrength === "strong" && userTurnChanged && payloadCorrelationStrength === "strong") {
+  if (generationSettlementStrength === "strong" && userTurnChanged && payloadCorrelationStrength === "strong" && (hopBindingStrength === "strong" || exactPlainPayloadMatch)) {
     return {
       verified: true,
-      reason: "generation_started_with_hop_bound_payload",
+      reason: hopBindingStrength === "strong" ? "generation_started_with_hop_bound_payload" : "generation_started_with_exact_payload",
       hopBindingStrength,
       payloadCorrelationStrength,
       generationSettlementStrength,
@@ -2064,6 +2100,7 @@ async function runRelayLoop(token, settings) {
       sourceText,
       sourceHash,
       lastForwardedSourceHash: state.lastForwardedHashes[sourceRole],
+      relayMode: settings.relayMode,
       stopMarker: settings.stopMarker
     });
     if (preSend.isEmpty) {
@@ -2098,6 +2135,7 @@ async function runRelayLoop(token, settings) {
       round: activeHop.round,
       message: sourceText,
       hopId: verificationHopId,
+      relayMode: settings.relayMode,
       continueMarker: settings.continueMarker,
       instructionLocale: getInstructionLocale()
     });
@@ -2270,6 +2308,7 @@ async function runRelayLoop(token, settings) {
     const postHop = evaluatePostHopGuard({
       assistantText: settled.result.text,
       round: nextState.round,
+      relayMode: settings.relayMode,
       maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
       maxRounds: nextState.settings.maxRounds,
       stopMarker: settings.stopMarker
@@ -2353,6 +2392,7 @@ async function resumePersistedHop({
     const postHop2 = evaluatePostHopGuard({
       assistantText: settled2.result.text,
       round: nextState2.round,
+      relayMode: settings.relayMode,
       maxRoundsEnabled: nextState2.settings.maxRoundsEnabled,
       maxRounds: nextState2.settings.maxRounds,
       stopMarker: settings.stopMarker
@@ -2402,6 +2442,7 @@ async function resumePersistedHop({
   const postHop = evaluatePostHopGuard({
     assistantText: settled.result.text,
     round: nextState.round,
+    relayMode: settings.relayMode,
     maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
     maxRounds: nextState.settings.maxRounds,
     stopMarker: settings.stopMarker
@@ -2588,6 +2629,7 @@ async function verifySubmittedHop({
     }
     generationObservedAfterDispatch = generationObservedAfterDispatch || observation.sample.generating === true;
     const verificationResult = evaluateSubmissionVerification({
+      relayMode: currentState.settings.relayMode,
       baselineUserHash: progress.baselineUserHash,
       baselineGenerating: progress.baselineGenerating,
       baselineLatestUserText: progress.baselineLatestUserText,
@@ -2605,6 +2647,8 @@ async function verifySubmittedHop({
     );
     const verificationPollSample = [
       verificationPollSampleBase,
+      `relay_mode:${currentState.settings.relayMode}`,
+      `control_tail:${currentState.settings.relayMode === "plain" ? "absent" : "visible"}`,
       `gate:${acceptanceGate.reason}`,
       `hop_binding:${verificationResult.hopBindingStrength}`,
       `payload:${verificationResult.payloadCorrelationStrength}`,

@@ -122,6 +122,7 @@ export interface RuntimeBinding {
 }
 
 export interface RuntimeSettings {
+  relayMode: "controlled" | "plain";
   maxRoundsEnabled: boolean;
   maxRounds: number;
   hopTimeoutMs: number;

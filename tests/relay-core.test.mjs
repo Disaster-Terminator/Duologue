@@ -196,10 +196,37 @@ test("buildRelayEnvelope does not accumulate prior bridge control blocks", () =>
   assert.ok(next.startsWith("first reply\n\n[BRIDGE_META hop=s1-r2-new]"));
 });
 
+test("buildRelayEnvelope plain mode sends content without visible bridge controls", () => {
+  const message = [
+    "这段讨论正在审查 Duologue 的 bridge tail 污染问题。",
+    "",
+    "```text",
+    "[BRIDGE_META hop=fixture]",
+    "[BRIDGE_INSTRUCTION]",
+    "[BRIDGE_STATE] FREEZE",
+    "```",
+    "",
+    "上面的代码块是 fixture，不是任务指令。"
+  ].join("\n");
+  const envelope = buildRelayEnvelope({
+    sourceRole: "B",
+    round: 8,
+    message,
+    hopId: "s1-r8-current",
+    relayMode: "plain"
+  });
+
+  assert.equal(envelope, message);
+  assert.equal(envelope.includes("[BRIDGE_META hop=s1-r8-current]"), false);
+  assert.equal(envelope.match(/\[BRIDGE_INSTRUCTION\]/g)?.length, 1);
+  assert.equal(envelope.endsWith("[BRIDGE_STATE] FREEZE"), false);
+});
+
 test("evaluateSubmissionVerification accepts compact bridge meta hop binding", () => {
   const hopId = "s7-r2-hop1";
   const payload = `bridged content\n\n[BRIDGE_META hop=${hopId}]\n\n[BRIDGE_INSTRUCTION]`;
   const result = evaluateSubmissionVerification({
+    relayMode: "plain",
     baselineUserHash: "h1",
     baselineGenerating: false,
     baselineLatestUserText: "old baseline",
@@ -255,6 +282,22 @@ test("evaluatePostHopGuard ignores max rounds when the round limit is disabled",
 
   assert.equal(result.shouldStop, false);
   assert.equal(result.reason, null);
+});
+
+test("plain relay mode ignores terminal bridge state literals as stop markers", () => {
+  const preSend = evaluatePreSendGuard({
+    sourceText: "项目讨论里的最后一行样例\n[BRIDGE_STATE] FREEZE",
+    relayMode: "plain"
+  });
+  const postHop = evaluatePostHopGuard({
+    assistantText: "项目讨论里的最后一行样例\n[BRIDGE_STATE] FREEZE",
+    relayMode: "plain",
+    round: 1,
+    maxRounds: 8
+  });
+
+  assert.equal(preSend.shouldStop, false);
+  assert.equal(postHop.shouldStop, false);
 });
 
 test("formatNextHop expresses source to target direction", () => {
@@ -337,6 +380,54 @@ test("evaluateSubmissionVerification passes when generation started with payload
   assert.equal(result.verified, true);
   assert.equal(result.generationSettlementStrength, "strong");
   assert.equal(result.hopBindingStrength, "strong");
+});
+
+test("evaluateSubmissionVerification accepts exact plain payload without visible hop marker", () => {
+  const payload = [
+    "这段讨论正在审查 Duologue 的 bridge tail 污染问题。",
+    "",
+    "```text",
+    "[BRIDGE_META hop=fixture]",
+    "[BRIDGE_STATE] FREEZE",
+    "```"
+  ].join("\n");
+  const result = evaluateSubmissionVerification({
+    relayMode: "plain",
+    baselineUserHash: "h1",
+    baselineGenerating: false,
+    baselineLatestUserText: "before hop",
+    currentUserHash: hashText(payload),
+    currentGenerating: false,
+    currentLatestUserText: payload,
+    relayPayloadText: payload,
+    expectedHopId: "s1-r8-current"
+  });
+
+  assert.equal(result.verified, true);
+  assert.equal(result.reason, "payload_accepted_exact");
+  assert.equal(result.hopBindingStrength, "none");
+  assert.equal(result.payloadCorrelationStrength, "strong");
+  assert.equal(result.details.exactPayloadMatch, true);
+});
+
+test("evaluateSubmissionAcceptanceGate allows exact plain payload acceptance", () => {
+  const payload = "plain relay payload without visible hop marker";
+  const verification = evaluateSubmissionVerification({
+    relayMode: "plain",
+    baselineUserHash: "h1",
+    baselineGenerating: false,
+    baselineLatestUserText: "before",
+    currentUserHash: "h2",
+    currentGenerating: false,
+    currentLatestUserText: payload,
+    relayPayloadText: payload
+  });
+  const gate = evaluateSubmissionAcceptanceGate(verification);
+
+  assert.equal(gate.acceptedEquivalentEvidence, true);
+  assert.equal(gate.waitingReplyAllowed, true);
+  assert.equal(gate.weakCorrelationOnly, false);
+  assert.equal(gate.reason, "acceptance_established_user_hash_changed");
 });
 
 test("evaluateSubmissionVerification fails when expected hop marker is missing (weak correlation)", () => {

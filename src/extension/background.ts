@@ -1295,6 +1295,7 @@ export async function runRelayLoop(token: number, settings: RuntimeSettings): Pr
       sourceText,
       sourceHash,
       lastForwardedSourceHash: state.lastForwardedHashes[sourceRole],
+      relayMode: settings.relayMode,
       stopMarker: settings.stopMarker
     });
 
@@ -1336,6 +1337,7 @@ export async function runRelayLoop(token: number, settings: RuntimeSettings): Pr
       round: activeHop.round,
       message: sourceText,
       hopId: verificationHopId,
+      relayMode: settings.relayMode,
       continueMarker: settings.continueMarker,
       instructionLocale: getInstructionLocale()
     });
@@ -1535,6 +1537,7 @@ export async function runRelayLoop(token: number, settings: RuntimeSettings): Pr
     const postHop = evaluatePostHopGuard({
       assistantText: settled.result.text,
       round: nextState.round,
+      relayMode: settings.relayMode,
       maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
       maxRounds: nextState.settings.maxRounds,
       stopMarker: settings.stopMarker
@@ -1638,6 +1641,7 @@ async function resumePersistedHop({
     const postHop = evaluatePostHopGuard({
       assistantText: settled.result.text,
       round: nextState.round,
+      relayMode: settings.relayMode,
       maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
       maxRounds: nextState.settings.maxRounds,
       stopMarker: settings.stopMarker
@@ -1697,6 +1701,7 @@ async function resumePersistedHop({
   const postHop = evaluatePostHopGuard({
     assistantText: settled.result.text,
     round: nextState.round,
+    relayMode: settings.relayMode,
     maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
     maxRounds: nextState.settings.maxRounds,
     stopMarker: settings.stopMarker
@@ -1934,6 +1939,7 @@ async function verifySubmittedHop({
       generationObservedAfterDispatch || observation.sample.generating === true;
 
     const verificationResult = evaluateSubmissionVerification({
+      relayMode: currentState.settings.relayMode,
       baselineUserHash: progress.baselineUserHash,
       baselineGenerating: progress.baselineGenerating,
       baselineLatestUserText: progress.baselineLatestUserText,
@@ -1952,6 +1958,8 @@ async function verifySubmittedHop({
     );
     const verificationPollSample = [
       verificationPollSampleBase,
+      `relay_mode:${currentState.settings.relayMode}`,
+      `control_tail:${currentState.settings.relayMode === "plain" ? "absent" : "visible"}`,
       `gate:${acceptanceGate.reason}`,
       `hop_binding:${verificationResult.hopBindingStrength}`,
       `payload:${verificationResult.payloadCorrelationStrength}`,

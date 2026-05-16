@@ -520,6 +520,7 @@ var MESSAGE_TYPES = Object.freeze({
   REQUEST_OPEN_POPUP: "REQUEST_OPEN_POPUP"
 });
 var DEFAULT_SETTINGS = Object.freeze({
+  relayMode: "controlled",
   maxRoundsEnabled: true,
   maxRounds: 8,
   hopTimeoutMs: 6e4,
@@ -649,6 +650,10 @@ var zhCN = {
     labelMaxRoundsLimit: "\u8F6E\u6570\u9650\u5236",
     labelMaxRounds: "\u6865\u63A5\u8F6E\u6570",
     maxRoundsHelp: "\u5F00\u542F\u540E\u5230\u8FBE\u76EE\u6807\u8F6E\u6570\u81EA\u52A8\u505C\u6B62\uFF1B\u5173\u95ED\u540E\u663E\u793A\u4E3A \u221E\u3002",
+    labelRelayMode: "\u6865\u63A5\u6A21\u5F0F",
+    relayModePlain: "\u7EAF\u5185\u5BB9",
+    relayModeControlled: "\u53D7\u63A7",
+    relayModeHelp: "\u7EAF\u5185\u5BB9\u4E0D\u8FFD\u52A0\u63A7\u5236\u5C3E\u5DF4\uFF1B\u53D7\u63A7\u6A21\u5F0F\u8981\u6C42\u6A21\u578B\u8F93\u51FA\u72B6\u6001\u884C\u3002",
     roundUnit: "\u8F6E",
     labelOverride: "\u6682\u505C\u65F6\u4E0B\u4E00\u8DF3\u8986\u76D6",
     labelResumeSource: "\u6062\u590D\u4ECE",
@@ -758,6 +763,10 @@ var en = {
     labelMaxRoundsLimit: "Round limit",
     labelMaxRounds: "Bridge rounds",
     maxRoundsHelp: "When enabled, stops after the selected count; disabled shows \u221E.",
+    labelRelayMode: "Relay mode",
+    relayModePlain: "Plain",
+    relayModeControlled: "Controlled",
+    relayModeHelp: "Plain sends content only; Controlled asks the model for a status line.",
     roundUnit: "rounds",
     labelOverride: "Paused next hop override",
     labelResumeSource: "Resume from",

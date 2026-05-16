@@ -54,6 +54,7 @@ interface DebugReport {
     B: BindingSummary | null;
   };
   settings: {
+    relayMode: RuntimeState["settings"]["relayMode"];
     maxRounds: number;
     maxRoundsEnabled: boolean;
     stopMarker: string;
@@ -118,6 +119,7 @@ export function buildDebugReport(input: DebugReportInput): DebugReport {
       B: bindingSummary(input.state.bindings.B)
     },
     settings: {
+      relayMode: input.state.settings.relayMode,
       maxRounds: input.state.settings.maxRounds,
       maxRoundsEnabled: input.state.settings.maxRoundsEnabled,
       stopMarker: trunc(input.state.settings.stopMarker, MAX_TEXT),
