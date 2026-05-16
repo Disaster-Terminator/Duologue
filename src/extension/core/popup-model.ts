@@ -14,10 +14,11 @@ function resolveDisplayedSourceRole(state: RuntimeState): BridgeRole {
 }
 
 export function deriveControls(state: RuntimeState, readiness: ExecutionReadiness): PopupControls {
+  const starterCanSettle = readiness.starterReady || readiness.blockReason === "starter_generating";
   return {
-    canStart: state.phase === PHASES.READY && !state.requiresTerminalClear && hasValidBindings(state) && !readiness.preflightPending && readiness.starterReady,
+    canStart: state.phase === PHASES.READY && !state.requiresTerminalClear && hasValidBindings(state) && !readiness.preflightPending && starterCanSettle,
     canPause: state.phase === PHASES.RUNNING,
-    canResume: state.phase === PHASES.PAUSED && hasValidBindings(state) && !readiness.preflightPending && readiness.starterReady,
+    canResume: state.phase === PHASES.PAUSED && hasValidBindings(state) && !readiness.preflightPending && starterCanSettle,
     canStop: state.phase === PHASES.RUNNING || state.phase === PHASES.PAUSED,
     canClearTerminal: state.phase === PHASES.STOPPED || state.phase === PHASES.ERROR,
     canSetStarter: (state.phase === PHASES.IDLE || state.phase === PHASES.READY || state.phase === PHASES.PAUSED) && !readiness.preflightPending,

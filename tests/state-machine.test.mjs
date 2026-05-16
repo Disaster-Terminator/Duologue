@@ -69,21 +69,37 @@ test("runtime settings preserve max rounds when only toggling the round limit", 
   assert.equal(state.settings.maxRoundsEnabled, false);
 });
 
-test("runtime settings ignore round limit changes while running", () => {
+test("runtime settings only hot-increase max rounds while running", () => {
   let state = createInitialState();
   state = reduceState(state, { type: "set_binding", role: "A", binding: createBinding("A", 1) });
   state = reduceState(state, { type: "set_binding", role: "B", binding: createBinding("B", 2) });
+  state = reduceState(state, {
+    type: "set_runtime_settings",
+    settings: {
+      maxRounds: 12
+    }
+  });
   state = reduceState(state, { type: "start" });
   state = reduceState(state, {
     type: "set_runtime_settings",
     settings: {
       maxRoundsEnabled: false,
+      maxRounds: 8
+    }
+  });
+
+  assert.equal(state.settings.maxRoundsEnabled, true);
+  assert.equal(state.settings.maxRounds, 12);
+
+  state = reduceState(state, {
+    type: "set_runtime_settings",
+    settings: {
       maxRounds: 20
     }
   });
 
   assert.equal(state.settings.maxRoundsEnabled, true);
-  assert.equal(state.settings.maxRounds, 8);
+  assert.equal(state.settings.maxRounds, 20);
 });
 
 test("paused runtime settings accept round limit changes", () => {

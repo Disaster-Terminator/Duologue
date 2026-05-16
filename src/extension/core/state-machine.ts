@@ -310,6 +310,15 @@ function reduceSetStarter(state: RuntimeState, event: SetStarterEvent): RuntimeS
 
 function reduceSetRuntimeSettings(state: RuntimeState, event: SetRuntimeSettingsEvent): RuntimeState {
   if (state.phase === PHASES.RUNNING) {
+    if ("maxRounds" in event.settings) {
+      const maxRounds = normalizeMaxRounds(event.settings.maxRounds);
+      if (state.settings.maxRoundsEnabled && maxRounds > state.settings.maxRounds) {
+        state.settings = {
+          ...state.settings,
+          maxRounds
+        };
+      }
+    }
     return state;
   }
 

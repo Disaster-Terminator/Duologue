@@ -33,6 +33,34 @@ test("ready enables start and starter, but not run-time controls", () => {
   assert.equal(controls.canSetOverride, false);
 });
 
+test("ready allows start while starter is still generating", () => {
+  const state = bind(bind(createInitialState(), "A", 1), "B", 2);
+  state.phase = PHASES.READY;
+
+  const readiness = computeReadiness(state, {
+    generating: true,
+    latestAssistantHash: "streaming"
+  });
+  const controls = deriveControls(state, readiness);
+
+  assert.equal(readiness.blockReason, "starter_generating");
+  assert.equal(controls.canStart, true);
+});
+
+test("ready still blocks start when starter has no assistant reply", () => {
+  const state = bind(bind(createInitialState(), "A", 1), "B", 2);
+  state.phase = PHASES.READY;
+
+  const readiness = computeReadiness(state, {
+    generating: false,
+    latestAssistantHash: null
+  });
+  const controls = deriveControls(state, readiness);
+
+  assert.equal(readiness.blockReason, "starter_empty");
+  assert.equal(controls.canStart, false);
+});
+
 test("paused enables override and resume, running does not", () => {
   const state = bind(bind(createInitialState(), "A", 1), "B", 2);
 

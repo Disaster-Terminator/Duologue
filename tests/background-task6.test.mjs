@@ -388,7 +388,7 @@ test("buildOverlaySnapshot uses source tab activity so overlay readiness matches
 
   assert.equal(snapshot.assignedRole, "A");
   assert.equal(snapshot.nextHop, "A -> B");
-  assert.equal(snapshot.controls.canStart, false);
+  assert.equal(snapshot.controls.canStart, true);
   assert.equal(snapshot.readiness.starterReady, false);
   assert.equal(snapshot.readiness.blockReason, "starter_generating");
   assert.deepEqual(chromeEnvironment.callLog, [{ tabId: 101, type: "GET_THREAD_ACTIVITY" }]);

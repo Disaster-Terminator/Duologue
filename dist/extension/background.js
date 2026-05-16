@@ -317,6 +317,15 @@ function reduceSetStarter(state, event) {
 }
 function reduceSetRuntimeSettings(state, event) {
   if (state.phase === PHASES.RUNNING) {
+    if ("maxRounds" in event.settings) {
+      const maxRounds2 = normalizeMaxRounds(event.settings.maxRounds);
+      if (state.settings.maxRoundsEnabled && maxRounds2 > state.settings.maxRounds) {
+        state.settings = {
+          ...state.settings,
+          maxRounds: maxRounds2
+        };
+      }
+    }
     return state;
   }
   const maxRounds = "maxRounds" in event.settings ? normalizeMaxRounds(event.settings.maxRounds) : state.settings.maxRounds;
@@ -1041,10 +1050,11 @@ function resolveDisplayedSourceRole(state) {
   return activeHop?.sourceRole ?? state.nextHopOverride ?? state.nextHopSource;
 }
 function deriveControls(state, readiness) {
+  const starterCanSettle = readiness.starterReady || readiness.blockReason === "starter_generating";
   return {
-    canStart: state.phase === PHASES.READY && !state.requiresTerminalClear && hasValidBindings(state) && !readiness.preflightPending && readiness.starterReady,
+    canStart: state.phase === PHASES.READY && !state.requiresTerminalClear && hasValidBindings(state) && !readiness.preflightPending && starterCanSettle,
     canPause: state.phase === PHASES.RUNNING,
-    canResume: state.phase === PHASES.PAUSED && hasValidBindings(state) && !readiness.preflightPending && readiness.starterReady,
+    canResume: state.phase === PHASES.PAUSED && hasValidBindings(state) && !readiness.preflightPending && starterCanSettle,
     canStop: state.phase === PHASES.RUNNING || state.phase === PHASES.PAUSED,
     canClearTerminal: state.phase === PHASES.STOPPED || state.phase === PHASES.ERROR,
     canSetStarter: (state.phase === PHASES.IDLE || state.phase === PHASES.READY || state.phase === PHASES.PAUSED) && !readiness.preflightPending,
@@ -2223,8 +2233,8 @@ async function runRelayLoop(token, settings) {
     const postHop = evaluatePostHopGuard({
       assistantText: settled.result.text,
       round: nextState.round,
-      maxRoundsEnabled: settings.maxRoundsEnabled,
-      maxRounds: settings.maxRounds,
+      maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
+      maxRounds: nextState.settings.maxRounds,
       stopMarker: settings.stopMarker
     });
     if (postHop.shouldStop) {
@@ -2306,8 +2316,8 @@ async function resumePersistedHop({
     const postHop2 = evaluatePostHopGuard({
       assistantText: settled2.result.text,
       round: nextState2.round,
-      maxRoundsEnabled: settings.maxRoundsEnabled,
-      maxRounds: settings.maxRounds,
+      maxRoundsEnabled: nextState2.settings.maxRoundsEnabled,
+      maxRounds: nextState2.settings.maxRounds,
       stopMarker: settings.stopMarker
     });
     if (postHop2.shouldStop) {
@@ -2355,8 +2365,8 @@ async function resumePersistedHop({
   const postHop = evaluatePostHopGuard({
     assistantText: settled.result.text,
     round: nextState.round,
-    maxRoundsEnabled: settings.maxRoundsEnabled,
-    maxRounds: settings.maxRounds,
+    maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
+    maxRounds: nextState.settings.maxRounds,
     stopMarker: settings.stopMarker
   });
   if (postHop.shouldStop) {

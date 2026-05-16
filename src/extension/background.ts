@@ -1548,8 +1548,8 @@ export async function runRelayLoop(token: number, settings: RuntimeSettings): Pr
     const postHop = evaluatePostHopGuard({
       assistantText: settled.result.text,
       round: nextState.round,
-      maxRoundsEnabled: settings.maxRoundsEnabled,
-      maxRounds: settings.maxRounds,
+      maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
+      maxRounds: nextState.settings.maxRounds,
       stopMarker: settings.stopMarker
     });
 
@@ -1651,8 +1651,8 @@ async function resumePersistedHop({
     const postHop = evaluatePostHopGuard({
       assistantText: settled.result.text,
       round: nextState.round,
-      maxRoundsEnabled: settings.maxRoundsEnabled,
-      maxRounds: settings.maxRounds,
+      maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
+      maxRounds: nextState.settings.maxRounds,
       stopMarker: settings.stopMarker
     });
 
@@ -1710,8 +1710,8 @@ async function resumePersistedHop({
   const postHop = evaluatePostHopGuard({
     assistantText: settled.result.text,
     round: nextState.round,
-    maxRoundsEnabled: settings.maxRoundsEnabled,
-    maxRounds: settings.maxRounds,
+    maxRoundsEnabled: nextState.settings.maxRoundsEnabled,
+    maxRounds: nextState.settings.maxRounds,
     stopMarker: settings.stopMarker
   });
 

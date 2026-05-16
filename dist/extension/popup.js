@@ -898,11 +898,16 @@ function render(model) {
   elements.clearTerminalButton.disabled = !controls.canClearTerminal;
   elements.starterSelect.disabled = !controls.canSetStarter;
   elements.overrideSelect.disabled = !controls.canSetOverride;
-  elements.maxRoundsRange.disabled = !controls.canSetSettings;
-  elements.maxRoundsValue.disabled = !controls.canSetSettings || !state.settings.maxRoundsEnabled;
+  const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
+  const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
+  const minEditableMaxRounds = canHotIncreaseMaxRounds ? state.settings.maxRounds : MIN_MAX_ROUNDS;
+  elements.maxRoundsRange.min = String(minEditableMaxRounds);
+  elements.maxRoundsValue.min = String(minEditableMaxRounds);
+  elements.maxRoundsRange.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
+  elements.maxRoundsValue.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
   elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
-  elements.decreaseMaxRoundsButton.disabled = !controls.canSetSettings || !state.settings.maxRoundsEnabled || state.settings.maxRounds <= MIN_MAX_ROUNDS;
-  elements.increaseMaxRoundsButton.disabled = !controls.canSetSettings || !state.settings.maxRoundsEnabled || state.settings.maxRounds >= MAX_MAX_ROUNDS;
+  elements.decreaseMaxRoundsButton.disabled = !controls.canSetSettings || canHotIncreaseMaxRounds || !state.settings.maxRoundsEnabled || state.settings.maxRounds <= MIN_MAX_ROUNDS;
+  elements.increaseMaxRoundsButton.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled || state.settings.maxRounds >= MAX_MAX_ROUNDS;
   elements.decreaseMaxRoundsButton.setAttribute("aria-label", copy.maxRoundsDecrease);
   elements.increaseMaxRoundsButton.setAttribute("aria-label", copy.maxRoundsIncrease);
   const maxRoundsToggle = elements.maxRoundsEnabledCheckbox.closest(".popup__toggle");
@@ -1130,7 +1135,10 @@ function summarizeBinding(copy, binding) {
   return `${binding.title || label} (#${binding.tabId})`;
 }
 async function updateMaxRounds(value) {
-  const maxRounds = clampMaxRounds(value);
+  const currentSettings = currentModel?.state.settings;
+  const currentPhase = currentModel?.state.phase;
+  const currentMaxRounds = currentSettings?.maxRounds ?? MIN_MAX_ROUNDS;
+  const maxRounds = currentPhase === "running" ? Math.max(currentMaxRounds, clampMaxRounds(value)) : clampMaxRounds(value);
   setMaxRoundsControl(maxRounds, elements.maxRoundsEnabledCheckbox.checked);
   await perform({
     type: MESSAGE_TYPES.SET_RUNTIME_SETTINGS,
