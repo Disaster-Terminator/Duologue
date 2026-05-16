@@ -1365,6 +1365,10 @@ function renderOverlay() {
   overlay.classList.toggle("chatgpt-bridge-overlay--ambient", isAmbient);
   overlay.classList.toggle("chatgpt-bridge-overlay--collapsed", Boolean(overlaySettings?.collapsed) && !isAmbient);
   overlay.classList.toggle(
+    "chatgpt-bridge-overlay--starter-choice",
+    overlaySnapshot.phase === "ready" && Boolean(controls?.canSetStarter)
+  );
+  overlay.classList.toggle(
     "chatgpt-bridge-overlay--resume-choice",
     overlaySnapshot.phase === "paused" && Boolean(controls?.canSetOverride)
   );

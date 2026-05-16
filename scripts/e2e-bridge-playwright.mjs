@@ -29,9 +29,11 @@ import {
   ensureOverlay,
   clickOverlayAction,
   clickOverlayResumeSource,
+  clickOverlayStarterSource,
   clickPopupAction,
   expectOverlayActionEnabled,
   expectOverlayResumeSourceVisible,
+  expectOverlayStarterSourceVisible,
   expectPopupActionEnabled,
   expectPopupPhaseState,
   expectPopupControlState,
@@ -1699,6 +1701,12 @@ async function runStarterBusyBeforeResume(env) {
 
 async function runPopupOverlaySync(env) {
   const { pageA, pageB, popupPage } = await buildTask9ReadyEnv(env);
+
+  await expectOverlayStarterSourceVisible(pageA);
+  await clickOverlayStarterSource(pageA, "B");
+  await waitForPopupOverlayNextHop({ popupPage, overlayPage: pageA, expectedNextHop: "B -> A" });
+  await clickOverlayStarterSource(pageA, "A");
+  await waitForPopupOverlayNextHop({ popupPage, overlayPage: pageA, expectedNextHop: "A -> B" });
   
   // Start the relay
   await expectOverlayActionEnabled(pageA, "start");
@@ -1733,6 +1741,26 @@ async function runPopupOverlaySync(env) {
   await expectOverlayActionEnabled(pageA, "start");
 
   return { success: true };
+}
+
+async function waitForPopupOverlayNextHop({ popupPage, overlayPage, expectedNextHop, timeoutMs = 30000 }) {
+  const startedAt = Date.now();
+  let lastState = "not_checked";
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const [popupState, overlayState] = await Promise.all([
+      readPopupState(popupPage),
+      readOverlayState(overlayPage)
+    ]);
+    if (popupState.nextHop === expectedNextHop && overlayState.nextHop === expectedNextHop) {
+      return;
+    }
+
+    lastState = `popup nextHop=${popupState.nextHop}, overlay nextHop=${overlayState.nextHop}`;
+    await sleep(500);
+  }
+
+  throw new Error(`Expected popup and overlay nextHop ${expectedNextHop}; last ${lastState}`);
 }
 
 async function waitForPopupOverlayConsistency({ popupPage, overlayPage, label, timeoutMs = 30000 }) {

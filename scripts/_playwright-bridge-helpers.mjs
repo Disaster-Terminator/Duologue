@@ -1326,6 +1326,37 @@ export async function clickOverlayResumeSource(page, role) {
 }
 
 /**
+ * Click the ready overlay starter source option.
+ * @param {import("playwright").Page} page
+ * @param {"A"|"B"} role
+ */
+export async function clickOverlayStarterSource(page, role) {
+  const selector = `.chatgpt-bridge-overlay:not([hidden]) [data-starter="${role}"]`;
+  await expectOverlayStarterSourceVisible(page);
+  const sourceButton = page.locator(selector).first();
+  await sourceButton.waitFor({ state: "visible", timeout: 30000 });
+  const enabled = await waitForEnabledButton(sourceButton, 15000);
+  if (!enabled) {
+    throw new Error(`Overlay starter source ${role} never became enabled within 15s.`);
+  }
+
+  try {
+    await sourceButton.click({ force: true, timeout: 5000 });
+  } catch {
+    await sourceButton.evaluate((node) => node.click()).catch(() => {});
+  }
+
+  await page.waitForFunction(
+    (targetRole) => {
+      const btn = document.querySelector(`.chatgpt-bridge-overlay:not([hidden]) [data-starter="${targetRole}"]`);
+      return btn?.getAttribute("data-active") === "true";
+    },
+    role,
+    { timeout: 15000 }
+  );
+}
+
+/**
  * Wait until the overlay resume-source control is visible.
  * @param {import("playwright").Page} page
  */
@@ -1334,6 +1365,23 @@ export async function expectOverlayResumeSourceVisible(page) {
     () => {
       const overlay = document.querySelector(".chatgpt-bridge-overlay:not([hidden])");
       if (!overlay || !overlay.classList.contains("chatgpt-bridge-overlay--resume-choice")) return false;
+      const card = overlay.querySelector(".chatgpt-bridge-overlay__starter-card");
+      if (!card) return false;
+      return window.getComputedStyle(card).display !== "none";
+    },
+    { timeout: 30000 }
+  );
+}
+
+/**
+ * Wait until the overlay starter-source control is visible in ready state.
+ * @param {import("playwright").Page} page
+ */
+export async function expectOverlayStarterSourceVisible(page) {
+  await page.waitForFunction(
+    () => {
+      const overlay = document.querySelector(".chatgpt-bridge-overlay:not([hidden])");
+      if (!overlay || !overlay.classList.contains("chatgpt-bridge-overlay--starter-choice")) return false;
       const card = overlay.querySelector(".chatgpt-bridge-overlay__starter-card");
       if (!card) return false;
       return window.getComputedStyle(card).display !== "none";
