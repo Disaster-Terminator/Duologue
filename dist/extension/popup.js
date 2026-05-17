@@ -846,6 +846,8 @@ function render(model) {
   elements.phaseBadge.dataset.phase = state.phase;
   elements.bindingA.textContent = summarizeBinding(copy, state.bindings.A);
   elements.bindingB.textContent = summarizeBinding(copy, state.bindings.B);
+  elements.bindingA.closest(".popup__binding-card")?.setAttribute("data-bound", String(Boolean(state.bindings.A)));
+  elements.bindingB.closest(".popup__binding-card")?.setAttribute("data-bound", String(Boolean(state.bindings.B)));
   elements.roundValue.textContent = formatRoundProgress(state.settings.maxRoundsEnabled, state.round, state.settings.maxRounds);
   elements.nextHopValue.textContent = display.nextHop;
   elements.currentStepValue.textContent = display.currentStep || copy.idle;
@@ -900,6 +902,8 @@ function render(model) {
   const canBindCurrentTab = Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
   elements.bindAButton.disabled = !canBindCurrentTab;
   elements.bindBButton.disabled = !canBindCurrentTab;
+  elements.bindAButton.dataset.current = String(currentTab?.assignedRole === "A");
+  elements.bindBButton.dataset.current = String(currentTab?.assignedRole === "B");
   elements.clearTerminalButton.disabled = !controls.canClearTerminal;
   setSegmentedButtons(elements.starterButtons, state.starter, controls.canSetStarter, "starter");
   elements.overrideSelect.disabled = !controls.canSetOverride;

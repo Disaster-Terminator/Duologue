@@ -292,6 +292,11 @@ body {
   padding: 7px 8px;
 }
 
+.popup__binding-card[data-bound="true"] {
+  border-color: rgba(201, 179, 122, 0.22);
+  background: linear-gradient(180deg, rgba(42, 37, 27, 0.22), rgba(10, 11, 15, 0.74));
+}
+
 .popup__binding-label {
   font-size: 9px;
   text-transform: uppercase;
@@ -303,6 +308,11 @@ body {
   margin-top: 6px;
   font-size: 12px;
   font-weight: 500;
+  color: rgba(246, 241, 231, 0.62);
+}
+
+.popup__binding-card[data-bound="true"] .popup__binding-value {
+  color: var(--popup-text);
 }
 
 .popup__current-tab-card {
@@ -595,11 +605,23 @@ body {
 }
 
 .popup__btn--bind {
-  border-color: rgba(201, 179, 122, 0.24);
-  color: rgba(234, 217, 166, 0.9);
+  border-color: var(--popup-control-border);
+  color: rgba(246, 241, 231, 0.74);
 }
 
 .popup__btn--bind:hover:not(:disabled) {
+  border-color: rgba(246, 241, 231, 0.18);
+  background: var(--popup-control-bg-hover);
+  color: var(--popup-text);
+}
+
+.popup__btn--bind[data-current="true"] {
+  border-color: rgba(201, 179, 122, 0.34);
+  background: linear-gradient(180deg, rgba(42, 37, 27, 0.42), rgba(17, 17, 20, 0.88));
+  color: #ead9a6;
+}
+
+.popup__btn--bind[data-current="true"]:hover:not(:disabled) {
   border-color: rgba(201, 179, 122, 0.36);
   background: linear-gradient(180deg, rgba(42, 37, 27, 0.36), rgba(17, 17, 20, 0.86));
   color: #f2e5bf;

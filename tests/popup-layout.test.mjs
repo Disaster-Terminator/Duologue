@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const popupHtml = await readFile(new URL("../src/extension/popup.html", import.meta.url), "utf8");
+const popupCss = await readFile(new URL("../src/extension/popup.css", import.meta.url), "utf8");
 
 test("popup keeps binding controls above runtime and session controls", () => {
   const statusIndex = popupHtml.indexOf('popup__section--status');
@@ -27,4 +28,12 @@ test("popup binding section presents bind actions before bound-tab summaries", (
   assert.ok(bindingsSection.indexOf('id="currentTabStatus"') < bindingsSection.indexOf('id="bindAButton"'));
   assert.ok(bindingsSection.indexOf('id="bindAButton"') < bindingsSection.indexOf('id="bindingA"'));
   assert.ok(bindingsSection.indexOf('id="bindBButton"') < bindingsSection.indexOf('id="bindingB"'));
+});
+
+test("popup binding emphasis is state-driven instead of always highlighted", () => {
+  assert.match(popupCss, /\.popup__btn--bind\[data-current="true"\]/);
+  assert.match(popupCss, /\.popup__binding-card\[data-bound="true"\]/);
+
+  const bindBaseRule = popupCss.match(/\.popup__btn--bind\s*\{(?<body>[^}]*)\}/)?.groups?.body ?? "";
+  assert.doesNotMatch(bindBaseRule, /#ead9a6|201,\s*179,\s*122/);
 });
