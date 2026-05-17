@@ -8,6 +8,9 @@
   --popup-text-muted: rgba(246, 241, 231, 0.4);
   --popup-radius: 14px;
   --popup-card-radius: 10px;
+  --popup-control-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01));
+  --popup-control-bg-hover: rgba(255, 255, 255, 0.04);
+  --popup-control-border: rgba(246, 241, 231, 0.11);
 }
 
 * {
@@ -279,14 +282,14 @@ body {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .popup__binding-card {
   border-radius: var(--popup-card-radius);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 8px;
+  border: 1px solid rgba(246, 241, 231, 0.08);
+  background: linear-gradient(180deg, rgba(11, 15, 22, 0.42), rgba(8, 10, 15, 0.68));
+  padding: 7px 8px;
 }
 
 .popup__binding-label {
@@ -305,9 +308,9 @@ body {
 .popup__current-tab-card {
   margin-top: 8px;
   border-radius: var(--popup-card-radius);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 8px;
+  border: 1px solid rgba(246, 241, 231, 0.08);
+  background: linear-gradient(180deg, rgba(11, 15, 22, 0.48), rgba(8, 10, 15, 0.72));
+  padding: 7px 8px;
 }
 
 .popup__primary-actions {
@@ -386,21 +389,21 @@ body {
 }
 
 .popup__segment {
-  min-height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.035);
+  min-height: 32px;
+  border: 1px solid var(--popup-control-border);
+  border-radius: 9px;
+  background: var(--popup-control-bg);
   color: var(--popup-text-dim);
   font: inherit;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .popup__segment[data-selected="true"] {
-  border-color: rgba(214, 181, 107, 0.52);
-  background: rgba(214, 181, 107, 0.12);
-  color: var(--popup-text);
+  border-color: rgba(201, 179, 122, 0.34);
+  background: linear-gradient(180deg, rgba(42, 37, 27, 0.42), rgba(17, 17, 20, 0.88));
+  color: #ead9a6;
 }
 
 .popup__segment:focus-visible {
@@ -536,7 +539,7 @@ body {
 }
 
 .popup__action-row--bind {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .popup__resume-choice {
@@ -544,11 +547,11 @@ body {
 }
 
 .popup__btn {
-  height: 34px;
-  border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: transparent;
-  color: rgba(246, 241, 231, 0.7);
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--popup-control-border);
+  background: var(--popup-control-bg);
+  color: rgba(246, 241, 231, 0.72);
   font: inherit;
   font-size: 12px;
   font-weight: 500;
@@ -563,8 +566,8 @@ body {
 }
 
 .popup__btn:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(246, 241, 231, 0.18);
+  background: var(--popup-control-bg-hover);
   color: var(--popup-text);
 }
 
@@ -577,7 +580,7 @@ body {
 
 .popup__btn--primary {
   border-color: rgba(201, 179, 122, 0.28);
-  background: linear-gradient(180deg, rgba(73, 61, 35, 0.72), rgba(34, 30, 24, 0.96));
+  background: linear-gradient(180deg, rgba(60, 51, 31, 0.5), rgba(27, 24, 21, 0.96));
   color: #ead9a6;
 }
 
@@ -589,6 +592,17 @@ body {
 .popup__btn--danger {
   border-color: rgba(248, 113, 113, 0.18);
   color: rgba(252, 165, 165, 0.86);
+}
+
+.popup__btn--bind {
+  border-color: rgba(201, 179, 122, 0.24);
+  color: rgba(234, 217, 166, 0.9);
+}
+
+.popup__btn--bind:hover:not(:disabled) {
+  border-color: rgba(201, 179, 122, 0.36);
+  background: linear-gradient(180deg, rgba(42, 37, 27, 0.36), rgba(17, 17, 20, 0.86));
+  color: #f2e5bf;
 }
 
 .popup__btn--danger:hover:not(:disabled) {

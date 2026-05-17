@@ -49,6 +49,28 @@
         </div>
       </section>
 
+      <section class="popup__section popup__section--bindings">
+        <p class="popup__section-label" data-copy="sectionFallback">标签绑定</p>
+        <div class="popup__current-tab-card">
+          <p class="popup__binding-label" data-copy="currentTab">当前标签页</p>
+          <p class="popup__binding-value" id="currentTabStatus">-</p>
+        </div>
+        <div class="popup__action-row popup__action-row--bind">
+          <button type="button" class="popup__btn popup__btn--bind" id="bindAButton" data-copy="bindA">绑定 A</button>
+          <button type="button" class="popup__btn popup__btn--bind" id="bindBButton" data-copy="bindB">绑定 B</button>
+        </div>
+        <div class="popup__binding-grid">
+          <div class="popup__binding-card">
+            <p class="popup__binding-label" data-copy="bindingA">绑定 A</p>
+            <p class="popup__binding-value" id="bindingA">未绑定</p>
+          </div>
+          <div class="popup__binding-card">
+            <p class="popup__binding-label" data-copy="bindingB">绑定 B</p>
+            <p class="popup__binding-value" id="bindingB">未绑定</p>
+          </div>
+        </div>
+      </section>
+
       <section class="popup__section">
         <p class="popup__section-label" data-copy="sectionRuntime">运行参数</p>
         <div class="popup__toggle-row popup__toggle-row--compact">
@@ -100,28 +122,6 @@
               <option value="B">B → A</option>
             </select>
           </div>
-        </div>
-      </section>
-
-      <section class="popup__section popup__section--bindings">
-        <p class="popup__section-label" data-copy="sectionFallback">标签绑定</p>
-        <div class="popup__binding-grid">
-          <div class="popup__binding-card">
-            <p class="popup__binding-label" data-copy="bindingA">绑定 A</p>
-            <p class="popup__binding-value" id="bindingA">未绑定</p>
-          </div>
-          <div class="popup__binding-card">
-            <p class="popup__binding-label" data-copy="bindingB">绑定 B</p>
-            <p class="popup__binding-value" id="bindingB">未绑定</p>
-          </div>
-        </div>
-        <div class="popup__current-tab-card">
-          <p class="popup__binding-label" data-copy="currentTab">当前标签页</p>
-          <p class="popup__binding-value" id="currentTabStatus">-</p>
-        </div>
-        <div class="popup__action-row popup__action-row--bind">
-          <button type="button" class="popup__btn" id="bindAButton" data-copy="bindA">绑定 A</button>
-          <button type="button" class="popup__btn" id="bindBButton" data-copy="bindB">绑定 B</button>
         </div>
       </section>
 
