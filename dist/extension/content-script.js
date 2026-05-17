@@ -597,6 +597,14 @@ function getErrorMessage(error) {
   return String(error);
 }
 
+// core/overlay-visibility.ts
+function shouldShowOverlay(input) {
+  if (input.overlaySettings?.enabled === false) {
+    return false;
+  }
+  return Boolean(input.isChatGptPage && input.assignedRole);
+}
+
 // copy/bridge-copy.ts
 var DEFAULT_UI_LOCALE = "zh-CN";
 var zhCN = {
@@ -1317,7 +1325,6 @@ function renderOverlay() {
   const canChangeBindings = overlaySnapshot.phase !== "running" && overlaySnapshot.phase !== "paused";
   const isAmbient = !isChatGptPage;
   const hasIssue = Boolean(display?.lastIssue && display.lastIssue !== "None");
-  const ambientVisible = overlaySnapshot.phase === "running" || overlaySnapshot.phase === "paused" || overlaySnapshot.phase === "stopped" || overlaySnapshot.phase === "error" || hasIssue;
   const overlayRoot = overlay;
   overlayRoot.dataset.tabId = overlaySnapshot.currentTabId !== null ? String(overlaySnapshot.currentTabId) : "";
   setOverlaySlotText("role", formatRoleStatus(overlayLocale, overlaySnapshot.assignedRole));
@@ -1398,7 +1405,13 @@ function renderOverlay() {
     "chatgpt-bridge-overlay--resume-choice",
     overlaySnapshot.phase === "paused" && Boolean(controls?.canSetOverride)
   );
-  overlay.hidden = isAmbient ? overlaySettings?.ambientEnabled !== true || !ambientVisible : overlaySettings?.enabled === false;
+  overlay.hidden = !shouldShowOverlay({
+    isChatGptPage,
+    assignedRole: overlaySnapshot.assignedRole,
+    phase: overlaySnapshot.phase,
+    hasIssue,
+    overlaySettings
+  });
   applyOverlayPosition(overlaySettings?.position ?? null);
   const clearTerminalBtn = requireOverlayElement("[data-action='clear-terminal']");
   clearTerminalBtn.disabled = !controls?.canClearTerminal;

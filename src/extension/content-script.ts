@@ -24,6 +24,7 @@ import {
   shouldStartOverlayRefresh,
   type OverlayRefreshFailureKind
 } from "./core/overlay-refresh.ts";
+import { shouldShowOverlay } from "./core/overlay-visibility.ts";
 import { getOverlayCopy, formatPhase, formatRoleStatus, formatStarter, formatStepLine, formatIssueLine, type UiLocale } from "./copy/bridge-copy.ts";
 import { readUiLocale, observeUiLocale } from "./ui/preferences.ts";
 import type {
@@ -538,13 +539,6 @@ function renderOverlay(): void {
   const canChangeBindings = overlaySnapshot.phase !== "running" && overlaySnapshot.phase !== "paused";
   const isAmbient = !isChatGptPage;
   const hasIssue = Boolean(display?.lastIssue && display.lastIssue !== "None");
-  const ambientVisible =
-    overlaySnapshot.phase === "running" ||
-    overlaySnapshot.phase === "paused" ||
-    overlaySnapshot.phase === "stopped" ||
-    overlaySnapshot.phase === "error" ||
-    hasIssue;
-
   // Expose currentTabId as DOM signal for runner synchronization
   const overlayRoot = overlay as HTMLElement;
   overlayRoot.dataset.tabId = overlaySnapshot.currentTabId !== null ? String(overlaySnapshot.currentTabId) : "";
@@ -641,9 +635,13 @@ function renderOverlay(): void {
     "chatgpt-bridge-overlay--resume-choice",
     overlaySnapshot.phase === "paused" && Boolean(controls?.canSetOverride)
   );
-  overlay.hidden = isAmbient
-    ? overlaySettings?.ambientEnabled !== true || !ambientVisible
-    : overlaySettings?.enabled === false;
+  overlay.hidden = !shouldShowOverlay({
+    isChatGptPage,
+    assignedRole: overlaySnapshot.assignedRole,
+    phase: overlaySnapshot.phase,
+    hasIssue,
+    overlaySettings
+  });
   applyOverlayPosition(overlaySettings?.position ?? null);
 
   const clearTerminalBtn = requireOverlayElement<HTMLButtonElement>("[data-action='clear-terminal']");
