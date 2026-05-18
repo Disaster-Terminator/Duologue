@@ -9,6 +9,37 @@ export interface PopupBindingButtonState {
   current: boolean;
 }
 
+export interface PopupSessionActionState {
+  startDisabled: boolean;
+  pauseDisabled: boolean;
+  resumeDisabled: boolean;
+  stopDisabled: boolean;
+  sessionActionRowHidden: boolean;
+  recoveryActionRowHidden: boolean;
+  startHidden: boolean;
+  pauseHidden: boolean;
+  resumeHidden: boolean;
+  stopHidden: boolean;
+  clearTerminalHidden: boolean;
+  clearTerminalDisabled: boolean;
+  resumeSourceHidden: boolean;
+}
+
+export interface PopupMaxRoundsControlState {
+  min: number;
+  inputDisabled: boolean;
+  toggleDisabled: boolean;
+  unlimited: boolean;
+  value: string;
+  placeholder: string;
+}
+
+export interface PopupIssueDisplayState {
+  rowHidden: boolean;
+  issueText: string;
+  debugIssueText: string;
+}
+
 export interface PopupRenderState {
   bindingA: string;
   bindingB: string;
@@ -17,13 +48,16 @@ export interface PopupRenderState {
   currentTabStatus: string;
   bindAButton: PopupBindingButtonState;
   bindBButton: PopupBindingButtonState;
+  sessionActions: PopupSessionActionState;
+  maxRoundsControl: PopupMaxRoundsControlState;
+  issueDisplay: PopupIssueDisplayState;
   overrideValue: string;
   overrideLabels: [string, string, string];
 }
 
 export function derivePopupRenderState(model: PopupModel, locale: UiLocale): PopupRenderState {
   const copy = getPopupCopy(locale);
-  const { state, currentTab, controls, readiness } = model;
+  const { state, currentTab, controls, display, readiness } = model;
   const canBindCurrentTab =
     Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
 
@@ -41,8 +75,66 @@ export function derivePopupRenderState(model: PopupModel, locale: UiLocale): Pop
       disabled: !canBindCurrentTab,
       current: currentTab?.assignedRole === "B"
     },
+    sessionActions: deriveSessionActions(model),
+    maxRoundsControl: deriveMaxRoundsControl(model),
+    issueDisplay: deriveIssueDisplay(display.lastIssue, copy.none),
     overrideValue: controls.canSetOverride ? readiness.sourceRole ?? "" : state.nextHopOverride ?? "",
     overrideLabels: [copy.overrideNone, copy.overrideA, copy.overrideB]
+  };
+}
+
+export function deriveSessionActions(model: PopupModel): PopupSessionActionState {
+  const { state, controls } = model;
+  return {
+    startDisabled: !controls.canStart,
+    pauseDisabled: !controls.canPause,
+    resumeDisabled: !controls.canResume,
+    stopDisabled: !controls.canStop,
+    sessionActionRowHidden: controls.canClearTerminal,
+    recoveryActionRowHidden: !controls.canClearTerminal,
+    startHidden: state.phase === "running" || state.phase === "paused" || controls.canClearTerminal,
+    pauseHidden: state.phase !== "running",
+    resumeHidden: state.phase !== "paused",
+    stopHidden: state.phase !== "running" && state.phase !== "paused",
+    clearTerminalHidden: !controls.canClearTerminal,
+    clearTerminalDisabled: !controls.canClearTerminal,
+    resumeSourceHidden: !controls.canSetOverride
+  };
+}
+
+export function deriveMaxRoundsControl(model: PopupModel): PopupMaxRoundsControlState {
+  const { state, controls } = model;
+  const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
+  const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
+  const min = canHotIncreaseMaxRounds ? state.settings.maxRounds : MIN_MAX_ROUNDS;
+  const unlimited = !state.settings.maxRoundsEnabled;
+
+  return {
+    min,
+    inputDisabled: !canEditMaxRounds || unlimited,
+    toggleDisabled: !controls.canSetSettings,
+    unlimited,
+    value: unlimited ? "" : String(clampMaxRounds(state.settings.maxRounds)),
+    placeholder: unlimited ? "∞" : ""
+  };
+}
+
+export function deriveIssueDisplay(
+  lastIssue: PopupModel["display"]["lastIssue"],
+  noneText: string
+): PopupIssueDisplayState {
+  if (lastIssue && lastIssue !== "None") {
+    return {
+      rowHidden: false,
+      issueText: lastIssue,
+      debugIssueText: lastIssue
+    };
+  }
+
+  return {
+    rowHidden: true,
+    issueText: "",
+    debugIssueText: noneText
   };
 }
 

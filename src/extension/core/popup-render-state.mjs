@@ -8,6 +8,7 @@ const COPY = {
     unsupportedTab: "当前标签页不是支持的 ChatGPT 线程。",
     threadLabel: "线程",
     projectThreadLabel: "项目线程",
+    none: "无",
     overrideNone: "不覆盖",
     overrideA: "A → B",
     overrideB: "B → A",
@@ -20,6 +21,7 @@ const COPY = {
     unsupportedTab: "Current tab is not a supported ChatGPT thread.",
     threadLabel: "Thread",
     projectThreadLabel: "Project thread",
+    none: "None",
     overrideNone: "No override",
     overrideA: "A → B",
     overrideB: "B → A",
@@ -34,7 +36,7 @@ function getPopupCopy(locale) {
 
 export function derivePopupRenderState(model, locale) {
   const copy = getPopupCopy(locale);
-  const { state, currentTab, controls, readiness } = model;
+  const { state, currentTab, controls, display, readiness } = model;
   const canBindCurrentTab =
     Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
 
@@ -52,8 +54,63 @@ export function derivePopupRenderState(model, locale) {
       disabled: !canBindCurrentTab,
       current: currentTab?.assignedRole === "B"
     },
+    sessionActions: deriveSessionActions(model),
+    maxRoundsControl: deriveMaxRoundsControl(model),
+    issueDisplay: deriveIssueDisplay(display.lastIssue, copy.none),
     overrideValue: controls.canSetOverride ? readiness.sourceRole ?? "" : state.nextHopOverride ?? "",
     overrideLabels: [copy.overrideNone, copy.overrideA, copy.overrideB]
+  };
+}
+
+export function deriveSessionActions(model) {
+  const { state, controls } = model;
+  return {
+    startDisabled: !controls.canStart,
+    pauseDisabled: !controls.canPause,
+    resumeDisabled: !controls.canResume,
+    stopDisabled: !controls.canStop,
+    sessionActionRowHidden: controls.canClearTerminal,
+    recoveryActionRowHidden: !controls.canClearTerminal,
+    startHidden: state.phase === "running" || state.phase === "paused" || controls.canClearTerminal,
+    pauseHidden: state.phase !== "running",
+    resumeHidden: state.phase !== "paused",
+    stopHidden: state.phase !== "running" && state.phase !== "paused",
+    clearTerminalHidden: !controls.canClearTerminal,
+    clearTerminalDisabled: !controls.canClearTerminal,
+    resumeSourceHidden: !controls.canSetOverride
+  };
+}
+
+export function deriveMaxRoundsControl(model) {
+  const { state, controls } = model;
+  const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
+  const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
+  const min = canHotIncreaseMaxRounds ? state.settings.maxRounds : MIN_MAX_ROUNDS;
+  const unlimited = !state.settings.maxRoundsEnabled;
+
+  return {
+    min,
+    inputDisabled: !canEditMaxRounds || unlimited,
+    toggleDisabled: !controls.canSetSettings,
+    unlimited,
+    value: unlimited ? "" : String(clampMaxRounds(state.settings.maxRounds)),
+    placeholder: unlimited ? "∞" : ""
+  };
+}
+
+export function deriveIssueDisplay(lastIssue, noneText) {
+  if (lastIssue && lastIssue !== "None") {
+    return {
+      rowHidden: false,
+      issueText: lastIssue,
+      debugIssueText: lastIssue
+    };
+  }
+
+  return {
+    rowHidden: true,
+    issueText: "",
+    debugIssueText: noneText
   };
 }
 

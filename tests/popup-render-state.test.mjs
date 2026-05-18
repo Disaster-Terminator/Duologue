@@ -230,6 +230,150 @@ test("derivePopupRenderState exposes exactly the three override labels render wr
   assert.equal(withOverride.overrideValue, "B");
 });
 
+test("derivePopupRenderState keeps session actions mutually exclusive", () => {
+  const idle = derivePopupRenderState(makeModel(), "zh-CN");
+  assert.deepEqual(idle.sessionActions, {
+    startDisabled: true,
+    pauseDisabled: true,
+    resumeDisabled: true,
+    stopDisabled: true,
+    sessionActionRowHidden: false,
+    recoveryActionRowHidden: true,
+    startHidden: false,
+    pauseHidden: true,
+    resumeHidden: true,
+    stopHidden: true,
+    clearTerminalHidden: true,
+    clearTerminalDisabled: true,
+    resumeSourceHidden: true
+  });
+
+  const paused = derivePopupRenderState(
+    makeModel({
+      state: {
+        phase: "paused"
+      },
+      controls: {
+        canResume: true,
+        canStop: true,
+        canSetOverride: true
+      }
+    }),
+    "zh-CN"
+  );
+  assert.equal(paused.sessionActions.startHidden, true);
+  assert.equal(paused.sessionActions.pauseHidden, true);
+  assert.equal(paused.sessionActions.resumeHidden, false);
+  assert.equal(paused.sessionActions.resumeDisabled, false);
+  assert.equal(paused.sessionActions.stopHidden, false);
+  assert.equal(paused.sessionActions.stopDisabled, false);
+  assert.equal(paused.sessionActions.resumeSourceHidden, false);
+
+  const recovery = derivePopupRenderState(
+    makeModel({
+      controls: {
+        canClearTerminal: true
+      }
+    }),
+    "zh-CN"
+  );
+  assert.equal(recovery.sessionActions.sessionActionRowHidden, true);
+  assert.equal(recovery.sessionActions.recoveryActionRowHidden, false);
+  assert.equal(recovery.sessionActions.startHidden, true);
+  assert.equal(recovery.sessionActions.clearTerminalHidden, false);
+  assert.equal(recovery.sessionActions.clearTerminalDisabled, false);
+});
+
+test("derivePopupRenderState exposes max round editability including hot increase", () => {
+  const idle = derivePopupRenderState(
+    makeModel({
+      controls: {
+        canSetSettings: true
+      }
+    }),
+    "zh-CN"
+  );
+  assert.deepEqual(idle.maxRoundsControl, {
+    min: 1,
+    inputDisabled: false,
+    toggleDisabled: false,
+    unlimited: false,
+    value: "8",
+    placeholder: ""
+  });
+
+  const runningHotIncrease = derivePopupRenderState(
+    makeModel({
+      state: {
+        phase: "running",
+        settings: {
+          ...makeModel().state.settings,
+          maxRoundsEnabled: true,
+          maxRounds: 12
+        }
+      },
+      controls: {
+        canSetSettings: false
+      }
+    }),
+    "zh-CN"
+  );
+  assert.equal(runningHotIncrease.maxRoundsControl.min, 12);
+  assert.equal(runningHotIncrease.maxRoundsControl.inputDisabled, false);
+  assert.equal(runningHotIncrease.maxRoundsControl.toggleDisabled, true);
+
+  const runningUnlimited = derivePopupRenderState(
+    makeModel({
+      state: {
+        phase: "running",
+        settings: {
+          ...makeModel().state.settings,
+          maxRoundsEnabled: false,
+          maxRounds: 12
+        }
+      },
+      controls: {
+        canSetSettings: false
+      }
+    }),
+    "zh-CN"
+  );
+  assert.equal(runningUnlimited.maxRoundsControl.inputDisabled, true);
+  assert.equal(runningUnlimited.maxRoundsControl.unlimited, true);
+  assert.equal(runningUnlimited.maxRoundsControl.value, "");
+  assert.equal(runningUnlimited.maxRoundsControl.placeholder, "∞");
+});
+
+test("derivePopupRenderState keeps issue row visibility out of DOM rendering", () => {
+  const clean = derivePopupRenderState(makeModel(), "zh-CN");
+  assert.deepEqual(clean.issueDisplay, {
+    rowHidden: true,
+    issueText: "",
+    debugIssueText: "无"
+  });
+
+  const withIssue = derivePopupRenderState(
+    makeModel({
+      model: {
+        display: {
+          nextHop: "A → B",
+          currentStep: "idle",
+          lastActionAt: null,
+          transport: null,
+          selector: null,
+          lastIssue: "hop_timeout"
+        }
+      }
+    }),
+    "zh-CN"
+  );
+  assert.deepEqual(withIssue.issueDisplay, {
+    rowHidden: false,
+    issueText: "hop_timeout",
+    debugIssueText: "hop_timeout"
+  });
+});
+
 test("popup render helpers keep round values within supported bounds", () => {
   assert.equal(formatRoundProgress(true, 2, 8), "2 / 8");
   assert.equal(formatRoundProgress(false, 2, 8), "2 / ∞");

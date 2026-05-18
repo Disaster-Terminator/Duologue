@@ -388,14 +388,9 @@ function render(model: PopupModel): void {
   elements.transportValue.textContent = display.transport || copy.none;
   elements.selectorValue.textContent = display.selector || copy.none;
 
-  if (display.lastIssue && display.lastIssue !== "None") {
-    elements.issueRow.hidden = false;
-    elements.issueValue.textContent = display.lastIssue;
-    elements.issueValueDebug.textContent = display.lastIssue;
-  } else {
-    elements.issueRow.hidden = true;
-    elements.issueValueDebug.textContent = copy.none;
-  }
+  elements.issueRow.hidden = renderState.issueDisplay.rowHidden;
+  elements.issueValue.textContent = renderState.issueDisplay.issueText;
+  elements.issueValueDebug.textContent = renderState.issueDisplay.debugIssueText;
 
   elements.localeSelect.value = currentLocale;
   setMaxRoundsControl(state.settings.maxRounds, state.settings.maxRoundsEnabled);
@@ -420,33 +415,32 @@ function render(model: PopupModel): void {
 
   elements.currentTabStatus.textContent = renderState.currentTabStatus;
 
-  elements.startButton.disabled = !controls.canStart;
-  elements.pauseButton.disabled = !controls.canPause;
-  elements.resumeButton.disabled = !controls.canResume;
-  elements.stopButton.disabled = !controls.canStop;
-  elements.sessionActionRow.hidden = controls.canClearTerminal;
-  elements.recoveryActionRow.hidden = !controls.canClearTerminal;
-  elements.startButton.hidden = state.phase === "running" || state.phase === "paused" || controls.canClearTerminal;
-  elements.pauseButton.hidden = state.phase !== "running";
-  elements.resumeButton.hidden = state.phase !== "paused";
-  elements.stopButton.hidden = state.phase !== "running" && state.phase !== "paused";
-  elements.clearTerminalButton.hidden = !controls.canClearTerminal;
-  elements.resumeSourceField.hidden = !controls.canSetOverride;
+  elements.startButton.disabled = renderState.sessionActions.startDisabled;
+  elements.pauseButton.disabled = renderState.sessionActions.pauseDisabled;
+  elements.resumeButton.disabled = renderState.sessionActions.resumeDisabled;
+  elements.stopButton.disabled = renderState.sessionActions.stopDisabled;
+  elements.sessionActionRow.hidden = renderState.sessionActions.sessionActionRowHidden;
+  elements.recoveryActionRow.hidden = renderState.sessionActions.recoveryActionRowHidden;
+  elements.startButton.hidden = renderState.sessionActions.startHidden;
+  elements.pauseButton.hidden = renderState.sessionActions.pauseHidden;
+  elements.resumeButton.hidden = renderState.sessionActions.resumeHidden;
+  elements.stopButton.hidden = renderState.sessionActions.stopHidden;
+  elements.clearTerminalButton.hidden = renderState.sessionActions.clearTerminalHidden;
+  elements.resumeSourceField.hidden = renderState.sessionActions.resumeSourceHidden;
 
   elements.bindAButton.disabled = renderState.bindAButton.disabled;
   elements.bindBButton.disabled = renderState.bindBButton.disabled;
   elements.bindAButton.dataset.current = String(renderState.bindAButton.current);
   elements.bindBButton.dataset.current = String(renderState.bindBButton.current);
-  elements.clearTerminalButton.disabled = !controls.canClearTerminal;
+  elements.clearTerminalButton.disabled = renderState.sessionActions.clearTerminalDisabled;
   setSegmentedButtons(elements.starterButtons, state.starter, controls.canSetStarter, "starter");
   elements.overrideSelect.value = renderState.overrideValue;
   elements.overrideSelect.disabled = !controls.canSetOverride;
-  const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
-  const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
-  const minEditableMaxRounds = canHotIncreaseMaxRounds ? state.settings.maxRounds : MIN_MAX_ROUNDS;
-  elements.maxRoundsValue.min = String(minEditableMaxRounds);
-  elements.maxRoundsValue.disabled = !canEditMaxRounds || !state.settings.maxRoundsEnabled;
-  elements.maxRoundsEnabledCheckbox.disabled = !controls.canSetSettings;
+  elements.maxRoundsValue.min = String(renderState.maxRoundsControl.min);
+  elements.maxRoundsValue.disabled = renderState.maxRoundsControl.inputDisabled;
+  elements.maxRoundsValue.value = renderState.maxRoundsControl.value;
+  elements.maxRoundsValue.placeholder = renderState.maxRoundsControl.placeholder;
+  elements.maxRoundsEnabledCheckbox.disabled = renderState.maxRoundsControl.toggleDisabled;
   setSegmentedButtons(elements.relayModeButtons, state.settings.relayMode, controls.canSetSettings, "relayMode");
 
   const maxRoundsToggle = elements.maxRoundsEnabledCheckbox.closest<HTMLElement>(".popup__toggle");
