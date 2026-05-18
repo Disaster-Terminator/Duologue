@@ -116,7 +116,6 @@ body {
   border: 1px solid var(--popup-border);
   border-radius: var(--popup-radius);
   background: linear-gradient(180deg, rgba(14, 15, 20, 0.9), rgba(9, 10, 14, 0.94));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.014);
 }
 
 .popup__section--session {
@@ -212,7 +211,7 @@ body {
   margin-top: 8px;
   border-radius: var(--popup-card-radius);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(180deg, rgba(11, 15, 22, 0.54), rgba(8, 10, 15, 0.8));
+  background: rgba(8, 10, 15, 0.72);
   padding: 8px;
 }
 
@@ -231,7 +230,6 @@ body {
   height: 6px;
   border-radius: 50%;
   background: rgba(125, 211, 252, 0.8);
-  box-shadow: 0 0 8px rgba(125, 211, 252, 0.2);
 }
 
 .popup__step-value {
@@ -288,7 +286,7 @@ body {
 .popup__binding-card {
   border-radius: var(--popup-card-radius);
   border: 1px solid rgba(246, 241, 231, 0.08);
-  background: linear-gradient(180deg, rgba(11, 15, 22, 0.42), rgba(8, 10, 15, 0.68));
+  background: rgba(8, 10, 15, 0.62);
   padding: 7px 8px;
 }
 
@@ -319,7 +317,7 @@ body {
   margin-top: 8px;
   border-radius: var(--popup-card-radius);
   border: 1px solid rgba(246, 241, 231, 0.08);
-  background: linear-gradient(180deg, rgba(11, 15, 22, 0.48), rgba(8, 10, 15, 0.72));
+  background: rgba(8, 10, 15, 0.66);
   padding: 7px 8px;
 }
 
@@ -625,6 +623,12 @@ body {
   border-color: rgba(201, 179, 122, 0.36);
   background: linear-gradient(180deg, rgba(42, 37, 27, 0.36), rgba(17, 17, 20, 0.86));
   color: #f2e5bf;
+}
+
+.popup__btn--bind[data-current="true"]:disabled {
+  border-color: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(246, 241, 231, 0.25);
 }
 
 .popup__btn--danger:hover:not(:disabled) {

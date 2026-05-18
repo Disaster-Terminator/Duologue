@@ -32,8 +32,20 @@ test("popup binding section presents bind actions before bound-tab summaries", (
 
 test("popup binding emphasis is state-driven instead of always highlighted", () => {
   assert.match(popupCss, /\.popup__btn--bind\[data-current="true"\]/);
+  assert.match(popupCss, /\.popup__btn--bind\[data-current="true"\]:disabled/);
   assert.match(popupCss, /\.popup__binding-card\[data-bound="true"\]/);
 
   const bindBaseRule = popupCss.match(/\.popup__btn--bind\s*\{(?<body>[^}]*)\}/)?.groups?.body ?? "";
   assert.doesNotMatch(bindBaseRule, /#ead9a6|201,\s*179,\s*122/);
+});
+
+test("popup resume override select matches render option writes", () => {
+  const overrideSelect = popupHtml.match(/<select class="popup__select" id="overrideSelect">(?<body>[\s\S]*?)<\/select>/)?.groups
+    ?.body;
+
+  assert.ok(overrideSelect);
+  assert.equal([...overrideSelect.matchAll(/<option\b/g)].length, 3);
+  assert.match(overrideSelect, /<option value="">/);
+  assert.match(overrideSelect, /<option value="A">/);
+  assert.match(overrideSelect, /<option value="B">/);
 });
