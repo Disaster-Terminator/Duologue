@@ -1,6 +1,13 @@
 import { MESSAGE_TYPES } from "./core/constants.ts";
 import { buildDebugReport } from "./core/debug-report.ts";
-import { getPopupCopy, applyStaticCopy, formatPhase, type UiLocale, type PopupCopy } from "./copy/bridge-copy.ts";
+import {
+  clampMaxRounds,
+  derivePopupRenderState,
+  formatRoundProgress,
+  MIN_MAX_ROUNDS,
+  summarizeBinding
+} from "./core/popup-render-state.ts";
+import { getPopupCopy, applyStaticCopy, formatPhase, type UiLocale } from "./copy/bridge-copy.ts";
 import { readUiLocale, writeUiLocale } from "./ui/preferences.ts";
 import type {
   BridgeRole,
@@ -27,8 +34,6 @@ import type {
 } from "./shared/types.js";
 
 const REFRESH_INTERVAL_MS = 1000;
-const MIN_MAX_ROUNDS = 1;
-const MAX_MAX_ROUNDS = 50;
 type RelayMode = RuntimeState["settings"]["relayMode"];
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -368,13 +373,14 @@ async function perform(message: PopupActionMessage): Promise<void> {
 
 function render(model: PopupModel): void {
   const copy = getPopupCopy(currentLocale);
-  const { state, currentTab, controls, display, overlaySettings, readiness } = model;
+  const { state, controls, display, overlaySettings, readiness } = model;
+  const renderState = derivePopupRenderState(model, currentLocale);
   elements.phaseBadge.textContent = formatPhase(currentLocale, state.phase);
   elements.phaseBadge.dataset.phase = state.phase;
-  elements.bindingA.textContent = summarizeBinding(copy, state.bindings.A);
-  elements.bindingB.textContent = summarizeBinding(copy, state.bindings.B);
-  elements.bindingA.closest<HTMLElement>(".popup__binding-card")?.setAttribute("data-bound", String(Boolean(state.bindings.A)));
-  elements.bindingB.closest<HTMLElement>(".popup__binding-card")?.setAttribute("data-bound", String(Boolean(state.bindings.B)));
+  elements.bindingA.textContent = renderState.bindingA;
+  elements.bindingB.textContent = renderState.bindingB;
+  elements.bindingA.closest<HTMLElement>(".popup__binding-card")?.setAttribute("data-bound", String(renderState.bindingABound));
+  elements.bindingB.closest<HTMLElement>(".popup__binding-card")?.setAttribute("data-bound", String(renderState.bindingBBound));
   elements.roundValue.textContent = formatRoundProgress(state.settings.maxRoundsEnabled, state.round, state.settings.maxRounds);
   elements.nextHopValue.textContent = display.nextHop;
   elements.currentStepValue.textContent = display.currentStep || copy.idle;
@@ -391,7 +397,6 @@ function render(model: PopupModel): void {
     elements.issueValueDebug.textContent = copy.none;
   }
 
-  elements.overrideSelect.value = controls.canSetOverride ? readiness.sourceRole : state.nextHopOverride ?? "";
   elements.localeSelect.value = currentLocale;
   setMaxRoundsControl(state.settings.maxRounds, state.settings.maxRoundsEnabled);
   elements.overlayEnabledCheckbox.checked = overlaySettings.enabled;
@@ -413,15 +418,7 @@ function render(model: PopupModel): void {
     expandedToggle.dataset.checked = String(elements.defaultExpandedCheckbox.checked);
   }
 
-  if (!currentTab) {
-    elements.currentTabStatus.textContent = copy.noActiveTab;
-  } else if (!currentTab.urlInfo.supported) {
-    elements.currentTabStatus.textContent = copy.unsupportedTab;
-  } else {
-    elements.currentTabStatus.textContent = currentTab.assignedRole
-      ? copy.tabBoundAs(currentTab.assignedRole)
-      : copy.tabEligible(currentTab.urlInfo.kind);
-  }
+  elements.currentTabStatus.textContent = renderState.currentTabStatus;
 
   elements.startButton.disabled = !controls.canStart;
   elements.pauseButton.disabled = !controls.canPause;
@@ -436,14 +433,13 @@ function render(model: PopupModel): void {
   elements.clearTerminalButton.hidden = !controls.canClearTerminal;
   elements.resumeSourceField.hidden = !controls.canSetOverride;
 
-  const canBindCurrentTab =
-    Boolean(currentTab?.urlInfo.supported) && state.phase !== "running" && state.phase !== "paused";
-  elements.bindAButton.disabled = !canBindCurrentTab;
-  elements.bindBButton.disabled = !canBindCurrentTab;
-  elements.bindAButton.dataset.current = String(currentTab?.assignedRole === "A");
-  elements.bindBButton.dataset.current = String(currentTab?.assignedRole === "B");
+  elements.bindAButton.disabled = renderState.bindAButton.disabled;
+  elements.bindBButton.disabled = renderState.bindBButton.disabled;
+  elements.bindAButton.dataset.current = String(renderState.bindAButton.current);
+  elements.bindBButton.dataset.current = String(renderState.bindBButton.current);
   elements.clearTerminalButton.disabled = !controls.canClearTerminal;
   setSegmentedButtons(elements.starterButtons, state.starter, controls.canSetStarter, "starter");
+  elements.overrideSelect.value = renderState.overrideValue;
   elements.overrideSelect.disabled = !controls.canSetOverride;
   const canHotIncreaseMaxRounds = state.phase === "running" && state.settings.maxRoundsEnabled;
   const canEditMaxRounds = controls.canSetSettings || canHotIncreaseMaxRounds;
@@ -467,9 +463,9 @@ function render(model: PopupModel): void {
   }
 
   const overrideOptions = elements.overrideSelect.options;
-  overrideOptions[0].textContent = copy.overrideNone;
-  overrideOptions[1].textContent = copy.overrideA;
-  overrideOptions[2].textContent = copy.overrideB;
+  overrideOptions[0].textContent = renderState.overrideLabels[0];
+  overrideOptions[1].textContent = renderState.overrideLabels[1];
+  overrideOptions[2].textContent = renderState.overrideLabels[2];
 }
 
 function showCopyFeedback(message: string, isSuccess: boolean): void {
@@ -706,25 +702,12 @@ function formatFileTimestamp(value: Date): string {
   return value.toISOString().replace(/[:.]/g, "-");
 }
 
-function formatRoundProgress(enabled: boolean, round: number, maxRounds: number): string {
-  return `${round} / ${enabled ? maxRounds : "∞"}`;
-}
-
 function preview(value: unknown): string {
   const text = String(value ?? "");
   if (!text) {
     return "N/A";
   }
   return text.length > 80 ? `${text.slice(0, 80)}...` : text;
-}
-
-function summarizeBinding(copy: PopupCopy, binding: RuntimeState["bindings"][BridgeRole]): string {
-  if (!binding) {
-    return copy.unbound;
-  }
-
-  const label = binding.urlInfo?.kind === "project" ? copy.projectThreadLabel : copy.threadLabel;
-  return `${binding.title || label} (#${binding.tabId})`;
 }
 
 async function updateMaxRounds(value: number): Promise<void> {
@@ -772,13 +755,6 @@ function setSegmentedButtons(
     button.dataset.selected = String(selected);
     button.setAttribute("aria-pressed", String(selected));
   }
-}
-
-function clampMaxRounds(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 8;
-  }
-  return Math.min(MAX_MAX_ROUNDS, Math.max(MIN_MAX_ROUNDS, Math.round(value)));
 }
 
 async function sendMessage<T extends PopupMessage>(message: T): Promise<PopupMessageResult<T>> {
