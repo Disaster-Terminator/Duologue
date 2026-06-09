@@ -108,6 +108,7 @@ export interface PopupCopy {
   localeEn: string;
   helpText: string;
   readinessLabel: string;
+  readinessNoticeLabel: string;
   blockReasons: Record<string, string>;
 }
 
@@ -215,8 +216,9 @@ const zhCN: { overlay: OverlayCopy; popup: PopupCopy } = {
     localeEn: "English",
     helpText: "覆盖仅在暂停时生效；清空终端可将已停止/错误状态重置为就绪。",
     readinessLabel: "无法启动:",
+    readinessNoticeLabel: "启动前检查:",
     blockReasons: {
-      starter_generating: "起始侧正在生成中",
+      starter_generating: "起始侧正在生成中，开始后会自动等待稳定",
       starter_empty: "起始侧没有可转发回复",
       clear_terminal_required: "需要清空终端",
       missing_binding: "缺少绑定",
@@ -329,8 +331,9 @@ const en: { overlay: OverlayCopy; popup: PopupCopy } = {
     localeEn: "English",
     helpText: "Override only applies while paused; Clear returns stopped/error to ready.",
     readinessLabel: "Cannot start:",
+    readinessNoticeLabel: "Preflight:",
     blockReasons: {
-      starter_generating: "Starter is still generating",
+      starter_generating: "Starter is still generating; start will wait for it to settle",
       starter_empty: "Starter has no reply to forward",
       clear_terminal_required: "Terminal must be cleared",
       missing_binding: "Missing binding",

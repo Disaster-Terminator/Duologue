@@ -40,6 +40,13 @@ export interface PopupIssueDisplayState {
   debugIssueText: string;
 }
 
+export interface PopupReadinessDisplayState {
+  rowHidden: boolean;
+  labelText: string;
+  reasonText: string;
+  variant: "blocked" | "notice";
+}
+
 export interface PopupRenderState {
   bindingA: string;
   bindingB: string;
@@ -51,6 +58,7 @@ export interface PopupRenderState {
   sessionActions: PopupSessionActionState;
   maxRoundsControl: PopupMaxRoundsControlState;
   issueDisplay: PopupIssueDisplayState;
+  readinessDisplay: PopupReadinessDisplayState;
   overrideValue: string;
   overrideLabels: [string, string, string];
 }
@@ -78,6 +86,7 @@ export function derivePopupRenderState(model: PopupModel, locale: UiLocale): Pop
     sessionActions: deriveSessionActions(model),
     maxRoundsControl: deriveMaxRoundsControl(model),
     issueDisplay: deriveIssueDisplay(display.lastIssue, copy.none),
+    readinessDisplay: deriveReadinessDisplay(model, copy),
     overrideValue: controls.canSetOverride ? readiness.sourceRole ?? "" : state.nextHopOverride ?? "",
     overrideLabels: [copy.overrideNone, copy.overrideA, copy.overrideB]
   };
@@ -135,6 +144,32 @@ export function deriveIssueDisplay(
     rowHidden: true,
     issueText: "",
     debugIssueText: noneText
+  };
+}
+
+export function deriveReadinessDisplay(
+  model: PopupModel,
+  copy: PopupCopy
+): PopupReadinessDisplayState {
+  const reason = model.readiness.blockReason;
+  if (!reason) {
+    return {
+      rowHidden: true,
+      labelText: "",
+      reasonText: "",
+      variant: "blocked"
+    };
+  }
+
+  const canProceedWithWait =
+    reason === "starter_generating" &&
+    (model.controls.canStart || model.controls.canResume);
+
+  return {
+    rowHidden: false,
+    labelText: canProceedWithWait ? copy.readinessNoticeLabel : copy.readinessLabel,
+    reasonText: copy.blockReasons?.[reason] || copy.none,
+    variant: canProceedWithWait ? "notice" : "blocked"
   };
 }
 

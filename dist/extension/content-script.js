@@ -711,8 +711,9 @@ var zhCN = {
     localeEn: "English",
     helpText: "\u8986\u76D6\u4EC5\u5728\u6682\u505C\u65F6\u751F\u6548\uFF1B\u6E05\u7A7A\u7EC8\u7AEF\u53EF\u5C06\u5DF2\u505C\u6B62/\u9519\u8BEF\u72B6\u6001\u91CD\u7F6E\u4E3A\u5C31\u7EEA\u3002",
     readinessLabel: "\u65E0\u6CD5\u542F\u52A8:",
+    readinessNoticeLabel: "\u542F\u52A8\u524D\u68C0\u67E5:",
     blockReasons: {
-      starter_generating: "\u8D77\u59CB\u4FA7\u6B63\u5728\u751F\u6210\u4E2D",
+      starter_generating: "\u8D77\u59CB\u4FA7\u6B63\u5728\u751F\u6210\u4E2D\uFF0C\u5F00\u59CB\u540E\u4F1A\u81EA\u52A8\u7B49\u5F85\u7A33\u5B9A",
       starter_empty: "\u8D77\u59CB\u4FA7\u6CA1\u6709\u53EF\u8F6C\u53D1\u56DE\u590D",
       clear_terminal_required: "\u9700\u8981\u6E05\u7A7A\u7EC8\u7AEF",
       missing_binding: "\u7F3A\u5C11\u7ED1\u5B9A",
@@ -824,8 +825,9 @@ var en = {
     localeEn: "English",
     helpText: "Override only applies while paused; Clear returns stopped/error to ready.",
     readinessLabel: "Cannot start:",
+    readinessNoticeLabel: "Preflight:",
     blockReasons: {
-      starter_generating: "Starter is still generating",
+      starter_generating: "Starter is still generating; start will wait for it to settle",
       starter_empty: "Starter has no reply to forward",
       clear_terminal_required: "Terminal must be cleared",
       missing_binding: "Missing binding",
@@ -1265,7 +1267,7 @@ function createOverlay() {
         </div>
       </div>
       <div class="chatgpt-bridge-overlay__control-container">
-        <div class="chatgpt-bridge-overlay__control-group">
+        <div class="chatgpt-bridge-overlay__control-group chatgpt-bridge-overlay__control-group--bindings">
           <span class="chatgpt-bridge-overlay__control-label">${c.bindA + " / " + c.bindB}</span>
           <div class="chatgpt-bridge-overlay__binding-row">
             <button type="button" class="chatgpt-bridge-overlay__binding-btn" data-bind-role="A">
@@ -1286,13 +1288,13 @@ function createOverlay() {
             </button>
           </div>
         </div>
-        <div class="chatgpt-bridge-overlay__control-group">
+        <div class="chatgpt-bridge-overlay__control-group chatgpt-bridge-overlay__control-group--session">
           <span class="chatgpt-bridge-overlay__control-label">${c.sessionLabel}</span>
           <div class="chatgpt-bridge-overlay__session-toolbar">
             <button type="button" class="chatgpt-bridge-overlay__session-primary" data-action="start">${c.start}</button>
             <button type="button" class="chatgpt-bridge-overlay__session-pause" data-action="pause" style="display:none">${c.pause}</button>
             <button type="button" class="chatgpt-bridge-overlay__session-resume" data-action="resume" style="display:none">${c.resume}</button>
-            <button type="button" class="chatgpt-bridge-overlay__session-stop" data-action="stop">
+            <button type="button" class="chatgpt-bridge-overlay__session-stop" data-action="stop" aria-label="${c.stop}" title="${c.stop}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="2"/>
               </svg>
@@ -1405,6 +1407,7 @@ function renderOverlay() {
     "chatgpt-bridge-overlay--resume-choice",
     overlaySnapshot.phase === "paused" && Boolean(controls?.canSetOverride)
   );
+  overlay.classList.toggle("chatgpt-bridge-overlay--bindings-locked", !canChangeBindings);
   overlay.hidden = !shouldShowOverlay({
     isChatGptPage,
     assignedRole: overlaySnapshot.assignedRole,

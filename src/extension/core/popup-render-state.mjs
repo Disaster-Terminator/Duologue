@@ -9,6 +9,15 @@ const COPY = {
     threadLabel: "线程",
     projectThreadLabel: "项目线程",
     none: "无",
+    readinessLabel: "无法启动:",
+    readinessNoticeLabel: "启动前检查:",
+    blockReasons: {
+      starter_generating: "起始侧正在生成中，开始后会自动等待稳定",
+      starter_empty: "起始侧没有可转发回复",
+      clear_terminal_required: "需要清空终端",
+      missing_binding: "缺少绑定",
+      preflight_pending: "等待起始侧就绪"
+    },
     overrideNone: "不覆盖",
     overrideA: "A → B",
     overrideB: "B → A",
@@ -22,6 +31,15 @@ const COPY = {
     threadLabel: "Thread",
     projectThreadLabel: "Project thread",
     none: "None",
+    readinessLabel: "Cannot start:",
+    readinessNoticeLabel: "Preflight:",
+    blockReasons: {
+      starter_generating: "Starter is still generating; start will wait for it to settle",
+      starter_empty: "Starter has no reply to forward",
+      clear_terminal_required: "Terminal must be cleared",
+      missing_binding: "Missing binding",
+      preflight_pending: "Waiting for starter to settle"
+    },
     overrideNone: "No override",
     overrideA: "A → B",
     overrideB: "B → A",
@@ -57,6 +75,7 @@ export function derivePopupRenderState(model, locale) {
     sessionActions: deriveSessionActions(model),
     maxRoundsControl: deriveMaxRoundsControl(model),
     issueDisplay: deriveIssueDisplay(display.lastIssue, copy.none),
+    readinessDisplay: deriveReadinessDisplay(model, copy),
     overrideValue: controls.canSetOverride ? readiness.sourceRole ?? "" : state.nextHopOverride ?? "",
     overrideLabels: [copy.overrideNone, copy.overrideA, copy.overrideB]
   };
@@ -111,6 +130,29 @@ export function deriveIssueDisplay(lastIssue, noneText) {
     rowHidden: true,
     issueText: "",
     debugIssueText: noneText
+  };
+}
+
+export function deriveReadinessDisplay(model, copy) {
+  const reason = model.readiness.blockReason;
+  if (!reason) {
+    return {
+      rowHidden: true,
+      labelText: "",
+      reasonText: "",
+      variant: "blocked"
+    };
+  }
+
+  const canProceedWithWait =
+    reason === "starter_generating" &&
+    (model.controls.canStart || model.controls.canResume);
+
+  return {
+    rowHidden: false,
+    labelText: canProceedWithWait ? copy.readinessNoticeLabel : copy.readinessLabel,
+    reasonText: copy.blockReasons?.[reason] || copy.none,
+    variant: canProceedWithWait ? "notice" : "blocked"
   };
 }
 

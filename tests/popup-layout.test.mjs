@@ -4,20 +4,22 @@ import { readFile } from "node:fs/promises";
 
 const popupHtml = await readFile(new URL("../src/extension/popup.html", import.meta.url), "utf8");
 const popupCss = await readFile(new URL("../src/extension/popup.css", import.meta.url), "utf8");
+const popupTs = await readFile(new URL("../src/extension/popup.ts", import.meta.url), "utf8");
 
-test("popup keeps binding controls above runtime and session controls", () => {
+test("popup keeps session controls immediately after status", () => {
   const statusIndex = popupHtml.indexOf('popup__section--status');
+  const sessionIndex = popupHtml.indexOf('popup__section--session');
   const bindingsIndex = popupHtml.indexOf('popup__section--bindings');
   const runtimeIndex = popupHtml.indexOf('data-copy="sectionRuntime"');
-  const sessionIndex = popupHtml.indexOf('popup__section--session');
 
   assert.notEqual(statusIndex, -1);
+  assert.notEqual(sessionIndex, -1);
   assert.notEqual(bindingsIndex, -1);
   assert.notEqual(runtimeIndex, -1);
-  assert.notEqual(sessionIndex, -1);
   assert.ok(statusIndex < bindingsIndex);
+  assert.ok(statusIndex < sessionIndex);
+  assert.ok(sessionIndex < bindingsIndex);
   assert.ok(bindingsIndex < runtimeIndex);
-  assert.ok(bindingsIndex < sessionIndex);
 });
 
 test("popup binding section presents bind actions before bound-tab summaries", () => {
@@ -37,6 +39,11 @@ test("popup binding emphasis is state-driven instead of always highlighted", () 
 
   const bindBaseRule = popupCss.match(/\.popup__btn--bind\s*\{(?<body>[^}]*)\}/)?.groups?.body ?? "";
   assert.doesNotMatch(bindBaseRule, /#ead9a6|201,\s*179,\s*122/);
+});
+
+test("popup chrome uses viewport-aware height and clears hidden readiness variant", () => {
+  assert.match(popupCss, /max-height:\s*min\(640px,\s*calc\(100vh - 16px\)\);/);
+  assert.match(popupTs, /delete elements\.readinessRow\.dataset\.variant;/);
 });
 
 test("popup resume override select matches render option writes", () => {

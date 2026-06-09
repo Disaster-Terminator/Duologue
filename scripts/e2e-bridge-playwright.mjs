@@ -38,6 +38,7 @@ import {
   expectPopupActionEnabled,
   expectPopupPhaseState,
   expectPopupControlState,
+  bootstrapAnonymousThread,
   buildBootstrapPrompt,
   findPageByOverlayTabId,
   getExtensionId,
@@ -59,9 +60,12 @@ import {
   ensureAnonymousSourceSeedWithBlocker,
   ensureAuthBackedSourceSeedWithBlocker,
   validateCurrentPageAuthState,
+  HarnessBlockerError,
+  isChatGptLoginOrAuthUrl,
   isHarnessBlocker
 } from "./_playwright-bridge-helpers.mjs";
 
+const DEFAULT_E2E_MAX_ROUNDS = 4;
 const extensionPath = readPathFlag("--path") || path.resolve(process.cwd(), "dist/extension");
 const browserExecutablePath = process.env.BROWSER_EXECUTABLE_PATH || null;
 const urlA = readFlag("--url-a");
@@ -74,7 +78,8 @@ const skipDebugLogServer = process.argv.includes("--no-debug-log-server");
 const cdpEndpointArg = readFlag("--cdp-endpoint");
 const reuseOpenChatgptTab = !process.argv.includes("--no-reuse-open-chatgpt-tab");
 const noNavOnAttach = !process.argv.includes("--nav-on-attach");
-const e2eMaxRounds = readPositiveIntFlag("--rounds") ?? readPositiveIntFlag("--max-rounds");
+const e2eMaxRounds =
+  readPositiveIntFlag("--rounds") ?? readPositiveIntFlag("--max-rounds") ?? DEFAULT_E2E_MAX_ROUNDS;
 const repoCloakbrowserProfileDir = path.resolve(process.cwd(), "tmp/cloakbrowser-auth-profile");
 const debugLogServerUrl = `http://${process.env.BRIDGE_DEBUG_HOST ?? "127.0.0.1"}:${process.env.BRIDGE_DEBUG_PORT ?? "17761"}`;
 const TASK9_SCENARIOS = new Set([
@@ -261,6 +266,46 @@ async function ensureChatGptPage(page) {
   }
 
   throw lastError;
+}
+
+async function captureHarnessPageGate(page, role) {
+  const url = page.url();
+  const title = await page.title().catch(() => "");
+  const bodySample = await page
+    .locator("body")
+    .innerText({ timeout: 1000 })
+    .then((text) => text.replace(/\s+/g, " ").trim().slice(0, 240))
+    .catch(() => "");
+
+  return {
+    role,
+    url,
+    title,
+    bodySample,
+    loginOrAuthUrl: isChatGptLoginOrAuthUrl(url)
+  };
+}
+
+async function ensureOverlayInjectableChatGptPages({ pages, baselineLabel, scenarioName }) {
+  const snapshots = await Promise.all(
+    pages.map(({ role, page }) => captureHarnessPageGate(page, role))
+  );
+  const blocked = snapshots.filter((snapshot) => snapshot.loginOrAuthUrl);
+
+  if (blocked.length === 0) {
+    return;
+  }
+
+  throw new HarnessBlockerError(
+    "chatgpt_auth_gate_before_overlay",
+    `ChatGPT ${baselineLabel} baseline reached an auth/login page before overlay injection: ` +
+      blocked.map((snapshot) => `${snapshot.role}=${snapshot.url}`).join(", "),
+    {
+      scenarioName,
+      baselineLabel,
+      pages: snapshots
+    }
+  );
 }
 
 function hasWaitingLikeStep(stepText) {
@@ -1385,12 +1430,30 @@ async function createEnv(scenarioName) {
       const postNavCheckA = await validateAuthState(pageA);
       if (!postNavCheckA.valid) {
         await cleanupBrowserConnection(browserConnection);
-        throw new Error(
-          `${persistentProfile ? "persistent_profile_auth_unavailable" : "auth_expired_after_navigation"}: ${postNavCheckA.error}`
+        const code = persistentProfile
+          ? "persistent_profile_auth_unavailable"
+          : "auth_expired_after_navigation";
+        throw new HarnessBlockerError(
+          code,
+          `${code}: ${postNavCheckA.error}`,
+          {
+            scenarioName,
+            baselineLabel,
+            authCheck: postNavCheckA
+          }
         );
       }
       console.log("  [e2e] Post-navigation auth verified");
     }
+
+    await ensureOverlayInjectableChatGptPages({
+      pages: [
+        { role: "A", page: pageA },
+        { role: "B", page: pageB }
+      ],
+      baselineLabel,
+      scenarioName
+    });
 
     const useLiveSessionRootBaseline = rootOnly || TASK9_SCENARIOS.has(scenarioName);
 
@@ -1406,6 +1469,15 @@ async function createEnv(scenarioName) {
         `  Live-session root baseline: skipping persistent thread bootstrap (scenario=${scenarioName}, A URL supported: ${pageAHasUrl}, B URL supported: ${pageBHasUrl})`
       );
     }
+
+    await ensureOverlayInjectableChatGptPages({
+      pages: [
+        { role: "A", page: pageA },
+        { role: "B", page: pageB }
+      ],
+      baselineLabel,
+      scenarioName
+    });
   }
 
   await Promise.all([pageA.title(), pageB.title()]);

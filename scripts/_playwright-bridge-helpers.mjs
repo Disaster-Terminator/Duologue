@@ -620,7 +620,22 @@ export function parseDisplayRound(value) {
  * @param {import("playwright").Page} page
  */
 export async function ensureOverlay(page) {
-  await page.waitForSelector(".chatgpt-bridge-overlay", { timeout: 30000 });
+  try {
+    await page.waitForSelector(".chatgpt-bridge-overlay", { state: "attached", timeout: 30000 });
+  } catch (error) {
+    const url = page.url();
+    const title = await page.title().catch(() => "");
+    const bodySample = await page
+      .locator("body")
+      .innerText({ timeout: 1000 })
+      .then((text) => text.replace(/\s+/g, " ").trim().slice(0, 240))
+      .catch(() => "");
+
+    throw new Error(
+      `Overlay was not injected within 30s. url=${url}; title=${JSON.stringify(title)}; ` +
+        `body=${JSON.stringify(bodySample)}; cause=${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 
 /**

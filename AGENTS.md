@@ -426,26 +426,25 @@ Run `omx setup` to install all components. Run `omx doctor` to verify installati
 
 ---
 
-# PROJECT: ChatGPT Tab Bridge
+# PROJECT: Duologue
 
 **Type**: Microsoft Edge browser extension (TypeScript)
 **Purpose**: Message relay between two ChatGPT tabs
 
 ## STRUCTURE
 ```
-meta/
-├── src/extension/        # Extension source
-│   ├── core/             # Business logic (state-machine, relay, URL)
-│   ├── shared/          # Shared utilities
-│   ├── ui/               # UI components
-│   ├── background.ts     # Service worker
-│   ├── content-script.ts # Page injection
-│   ├── popup.ts         # Popup UI
-│   └── manifest.json    # Extension manifest
-├── dist/extension/       # Built extension (committed)
-├── tests/                # Unit tests (.test.mjs)
-├── scripts/              # Build + Playwright scripts
-└── package.json         # pnpm scripts
+src/extension/          # Extension source
+├── core/               # Business logic (state-machine, relay, URL)
+├── shared/             # Shared utilities
+├── ui/                 # UI components
+├── background.ts       # Service worker
+├── content-script.ts   # Page injection
+├── popup.ts            # Popup UI
+└── manifest.json       # Extension manifest
+dist/extension/         # Built extension (committed)
+tests/                  # Unit tests (.test.mjs)
+scripts/                # Build + Playwright scripts
+package.json            # pnpm scripts
 ```
 
 ## WHERE TO LOOK

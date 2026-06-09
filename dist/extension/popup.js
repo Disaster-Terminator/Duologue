@@ -427,8 +427,9 @@ var zhCN = {
     localeEn: "English",
     helpText: "\u8986\u76D6\u4EC5\u5728\u6682\u505C\u65F6\u751F\u6548\uFF1B\u6E05\u7A7A\u7EC8\u7AEF\u53EF\u5C06\u5DF2\u505C\u6B62/\u9519\u8BEF\u72B6\u6001\u91CD\u7F6E\u4E3A\u5C31\u7EEA\u3002",
     readinessLabel: "\u65E0\u6CD5\u542F\u52A8:",
+    readinessNoticeLabel: "\u542F\u52A8\u524D\u68C0\u67E5:",
     blockReasons: {
-      starter_generating: "\u8D77\u59CB\u4FA7\u6B63\u5728\u751F\u6210\u4E2D",
+      starter_generating: "\u8D77\u59CB\u4FA7\u6B63\u5728\u751F\u6210\u4E2D\uFF0C\u5F00\u59CB\u540E\u4F1A\u81EA\u52A8\u7B49\u5F85\u7A33\u5B9A",
       starter_empty: "\u8D77\u59CB\u4FA7\u6CA1\u6709\u53EF\u8F6C\u53D1\u56DE\u590D",
       clear_terminal_required: "\u9700\u8981\u6E05\u7A7A\u7EC8\u7AEF",
       missing_binding: "\u7F3A\u5C11\u7ED1\u5B9A",
@@ -540,8 +541,9 @@ var en = {
     localeEn: "English",
     helpText: "Override only applies while paused; Clear returns stopped/error to ready.",
     readinessLabel: "Cannot start:",
+    readinessNoticeLabel: "Preflight:",
     blockReasons: {
-      starter_generating: "Starter is still generating",
+      starter_generating: "Starter is still generating; start will wait for it to settle",
       starter_empty: "Starter has no reply to forward",
       clear_terminal_required: "Terminal must be cleared",
       missing_binding: "Missing binding",
@@ -609,6 +611,7 @@ function derivePopupRenderState(model, locale) {
     sessionActions: deriveSessionActions(model),
     maxRoundsControl: deriveMaxRoundsControl(model),
     issueDisplay: deriveIssueDisplay(display.lastIssue, copy.none),
+    readinessDisplay: deriveReadinessDisplay(model, copy),
     overrideValue: controls.canSetOverride ? readiness.sourceRole ?? "" : state.nextHopOverride ?? "",
     overrideLabels: [copy.overrideNone, copy.overrideA, copy.overrideB]
   };
@@ -658,6 +661,24 @@ function deriveIssueDisplay(lastIssue, noneText) {
     rowHidden: true,
     issueText: "",
     debugIssueText: noneText
+  };
+}
+function deriveReadinessDisplay(model, copy) {
+  const reason = model.readiness.blockReason;
+  if (!reason) {
+    return {
+      rowHidden: true,
+      labelText: "",
+      reasonText: "",
+      variant: "blocked"
+    };
+  }
+  const canProceedWithWait = reason === "starter_generating" && (model.controls.canStart || model.controls.canResume);
+  return {
+    rowHidden: false,
+    labelText: canProceedWithWait ? copy.readinessNoticeLabel : copy.readinessLabel,
+    reasonText: copy.blockReasons?.[reason] || copy.none,
+    variant: canProceedWithWait ? "notice" : "blocked"
   };
 }
 function getCurrentTabStatus(copy, currentTab) {
@@ -753,6 +774,7 @@ var elements = {
   issueValueDebug: requireElement("#issueValueDebug"),
   issueRow: requireElement("#issueRow"),
   copyFeedback: requireElement("#copyFeedback"),
+  readinessLabel: requireElement("#readinessLabel"),
   readinessRow: requireElement("#readinessRow"),
   readinessReason: requireElement("#readinessReason")
 };
@@ -940,7 +962,7 @@ async function perform(message) {
 }
 function render(model) {
   const copy = getPopupCopy(currentLocale);
-  const { state, controls, display, overlaySettings, readiness } = model;
+  const { state, controls, display, overlaySettings } = model;
   const renderState = derivePopupRenderState(model, currentLocale);
   elements.phaseBadge.textContent = formatPhase(currentLocale, state.phase);
   elements.phaseBadge.dataset.phase = state.phase;
@@ -979,6 +1001,8 @@ function render(model) {
   elements.pauseButton.disabled = renderState.sessionActions.pauseDisabled;
   elements.resumeButton.disabled = renderState.sessionActions.resumeDisabled;
   elements.stopButton.disabled = renderState.sessionActions.stopDisabled;
+  setDisabledReadinessTitle(elements.startButton, renderState);
+  setDisabledReadinessTitle(elements.resumeButton, renderState);
   elements.sessionActionRow.hidden = renderState.sessionActions.sessionActionRowHidden;
   elements.recoveryActionRow.hidden = renderState.sessionActions.recoveryActionRowHidden;
   elements.startButton.hidden = renderState.sessionActions.startHidden;
@@ -1005,13 +1029,14 @@ function render(model) {
   if (maxRoundsToggle) {
     maxRoundsToggle.dataset.checked = String(elements.maxRoundsEnabledCheckbox.checked);
   }
-  if (readiness.blockReason) {
-    elements.readinessRow.hidden = false;
-    const reasonKey = readiness.blockReason;
-    elements.readinessReason.textContent = copy.blockReasons?.[reasonKey] || copy.none;
+  elements.readinessRow.hidden = renderState.readinessDisplay.rowHidden;
+  if (renderState.readinessDisplay.rowHidden) {
+    delete elements.readinessRow.dataset.variant;
   } else {
-    elements.readinessRow.hidden = true;
+    elements.readinessRow.dataset.variant = renderState.readinessDisplay.variant;
   }
+  elements.readinessLabel.textContent = renderState.readinessDisplay.labelText;
+  elements.readinessReason.textContent = renderState.readinessDisplay.reasonText;
   const overrideOptions = elements.overrideSelect.options;
   overrideOptions[0].textContent = renderState.overrideLabels[0];
   overrideOptions[1].textContent = renderState.overrideLabels[1];
@@ -1247,6 +1272,14 @@ function setSegmentedButtons(buttons, selectedValue, enabled, dataKey) {
     button.dataset.selected = String(selected);
     button.setAttribute("aria-pressed", String(selected));
   }
+}
+function setDisabledReadinessTitle(button, renderState) {
+  const readiness = renderState.readinessDisplay;
+  if (!button.disabled || readiness.rowHidden || readiness.variant !== "blocked") {
+    button.title = "";
+    return;
+  }
+  button.title = `${readiness.labelText} ${readiness.reasonText}`;
 }
 async function sendMessage(message) {
   const response = await chrome.runtime.sendMessage(message);

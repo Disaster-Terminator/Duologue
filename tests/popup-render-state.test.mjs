@@ -374,6 +374,45 @@ test("derivePopupRenderState keeps issue row visibility out of DOM rendering", (
   });
 });
 
+test("derivePopupRenderState shows starter generating as preflight notice when start can wait", () => {
+  const state = derivePopupRenderState(
+    makeModel({
+      controls: {
+        canStart: true
+      },
+      readiness: {
+        blockReason: "starter_generating"
+      }
+    }),
+    "zh-CN"
+  );
+
+  assert.deepEqual(state.readinessDisplay, {
+    rowHidden: false,
+    labelText: "启动前检查:",
+    reasonText: "起始侧正在生成中，开始后会自动等待稳定",
+    variant: "notice"
+  });
+});
+
+test("derivePopupRenderState keeps hard blockers visually distinct", () => {
+  const state = derivePopupRenderState(
+    makeModel({
+      readiness: {
+        blockReason: "starter_empty"
+      }
+    }),
+    "zh-CN"
+  );
+
+  assert.deepEqual(state.readinessDisplay, {
+    rowHidden: false,
+    labelText: "无法启动:",
+    reasonText: "起始侧没有可转发回复",
+    variant: "blocked"
+  });
+});
+
 test("popup render helpers keep round values within supported bounds", () => {
   assert.equal(formatRoundProgress(true, 2, 8), "2 / 8");
   assert.equal(formatRoundProgress(false, 2, 8), "2 / ∞");

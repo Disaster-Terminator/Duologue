@@ -1,7 +1,6 @@
 .omx/
 .codex/
 .sisyphus/
-AGENTS.md
 node_modules/
 .pnpm-store/
 package-lock.json

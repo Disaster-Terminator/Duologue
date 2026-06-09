@@ -448,6 +448,15 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.chatgpt-bridge-overlay--bindings-locked .chatgpt-bridge-overlay__control-group--bindings {
+  display: none;
+}
+
+.chatgpt-bridge-overlay--bindings-locked .chatgpt-bridge-overlay__control-group--session {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .chatgpt-bridge-overlay__control-label {
   font-size: 9px;
   text-transform: uppercase;

@@ -478,7 +478,7 @@ function createOverlay(): HTMLElement {
         </div>
       </div>
       <div class="chatgpt-bridge-overlay__control-container">
-        <div class="chatgpt-bridge-overlay__control-group">
+        <div class="chatgpt-bridge-overlay__control-group chatgpt-bridge-overlay__control-group--bindings">
           <span class="chatgpt-bridge-overlay__control-label">${c.bindA + " / " + c.bindB}</span>
           <div class="chatgpt-bridge-overlay__binding-row">
             <button type="button" class="chatgpt-bridge-overlay__binding-btn" data-bind-role="A">
@@ -499,13 +499,13 @@ function createOverlay(): HTMLElement {
             </button>
           </div>
         </div>
-        <div class="chatgpt-bridge-overlay__control-group">
+        <div class="chatgpt-bridge-overlay__control-group chatgpt-bridge-overlay__control-group--session">
           <span class="chatgpt-bridge-overlay__control-label">${c.sessionLabel}</span>
           <div class="chatgpt-bridge-overlay__session-toolbar">
             <button type="button" class="chatgpt-bridge-overlay__session-primary" data-action="start">${c.start}</button>
             <button type="button" class="chatgpt-bridge-overlay__session-pause" data-action="pause" style="display:none">${c.pause}</button>
             <button type="button" class="chatgpt-bridge-overlay__session-resume" data-action="resume" style="display:none">${c.resume}</button>
-            <button type="button" class="chatgpt-bridge-overlay__session-stop" data-action="stop">
+            <button type="button" class="chatgpt-bridge-overlay__session-stop" data-action="stop" aria-label="${c.stop}" title="${c.stop}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="2"/>
               </svg>
@@ -635,6 +635,7 @@ function renderOverlay(): void {
     "chatgpt-bridge-overlay--resume-choice",
     overlaySnapshot.phase === "paused" && Boolean(controls?.canSetOverride)
   );
+  overlay.classList.toggle("chatgpt-bridge-overlay--bindings-locked", !canChangeBindings);
   overlay.hidden = !shouldShowOverlay({
     isChatGptPage,
     assignedRole: overlaySnapshot.assignedRole,

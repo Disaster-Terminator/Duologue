@@ -83,6 +83,7 @@ interface PopupElements {
   issueValueDebug: HTMLElement;
   issueRow: HTMLElement;
   copyFeedback: HTMLElement;
+  readinessLabel: HTMLElement;
   readinessRow: HTMLElement;
   readinessReason: HTMLElement;
 }
@@ -154,6 +155,7 @@ const elements: PopupElements = {
   issueValueDebug: requireElement<HTMLElement>("#issueValueDebug"),
   issueRow: requireElement<HTMLElement>("#issueRow"),
   copyFeedback: requireElement<HTMLElement>("#copyFeedback"),
+  readinessLabel: requireElement<HTMLElement>("#readinessLabel"),
   readinessRow: requireElement<HTMLElement>("#readinessRow"),
   readinessReason: requireElement<HTMLElement>("#readinessReason")
 };
@@ -373,7 +375,7 @@ async function perform(message: PopupActionMessage): Promise<void> {
 
 function render(model: PopupModel): void {
   const copy = getPopupCopy(currentLocale);
-  const { state, controls, display, overlaySettings, readiness } = model;
+  const { state, controls, display, overlaySettings } = model;
   const renderState = derivePopupRenderState(model, currentLocale);
   elements.phaseBadge.textContent = formatPhase(currentLocale, state.phase);
   elements.phaseBadge.dataset.phase = state.phase;
@@ -419,6 +421,8 @@ function render(model: PopupModel): void {
   elements.pauseButton.disabled = renderState.sessionActions.pauseDisabled;
   elements.resumeButton.disabled = renderState.sessionActions.resumeDisabled;
   elements.stopButton.disabled = renderState.sessionActions.stopDisabled;
+  setDisabledReadinessTitle(elements.startButton, renderState);
+  setDisabledReadinessTitle(elements.resumeButton, renderState);
   elements.sessionActionRow.hidden = renderState.sessionActions.sessionActionRowHidden;
   elements.recoveryActionRow.hidden = renderState.sessionActions.recoveryActionRowHidden;
   elements.startButton.hidden = renderState.sessionActions.startHidden;
@@ -448,13 +452,14 @@ function render(model: PopupModel): void {
     maxRoundsToggle.dataset.checked = String(elements.maxRoundsEnabledCheckbox.checked);
   }
 
-  if (readiness.blockReason) {
-    elements.readinessRow.hidden = false;
-    const reasonKey = readiness.blockReason;
-    elements.readinessReason.textContent = copy.blockReasons?.[reasonKey] || copy.none;
+  elements.readinessRow.hidden = renderState.readinessDisplay.rowHidden;
+  if (renderState.readinessDisplay.rowHidden) {
+    delete elements.readinessRow.dataset.variant;
   } else {
-    elements.readinessRow.hidden = true;
+    elements.readinessRow.dataset.variant = renderState.readinessDisplay.variant;
   }
+  elements.readinessLabel.textContent = renderState.readinessDisplay.labelText;
+  elements.readinessReason.textContent = renderState.readinessDisplay.reasonText;
 
   const overrideOptions = elements.overrideSelect.options;
   overrideOptions[0].textContent = renderState.overrideLabels[0];
@@ -749,6 +754,19 @@ function setSegmentedButtons(
     button.dataset.selected = String(selected);
     button.setAttribute("aria-pressed", String(selected));
   }
+}
+
+function setDisabledReadinessTitle(
+  button: HTMLButtonElement,
+  renderState: ReturnType<typeof derivePopupRenderState>
+): void {
+  const readiness = renderState.readinessDisplay;
+  if (!button.disabled || readiness.rowHidden || readiness.variant !== "blocked") {
+    button.title = "";
+    return;
+  }
+
+  button.title = `${readiness.labelText} ${readiness.reasonText}`;
 }
 
 async function sendMessage<T extends PopupMessage>(message: T): Promise<PopupMessageResult<T>> {

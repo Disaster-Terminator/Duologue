@@ -22,11 +22,13 @@ body {
   margin: 0;
   width: 336px;
   min-width: 336px;
+  max-height: min(640px, calc(100vh - 16px));
   background: var(--popup-bg);
   color: var(--popup-text);
   font: 13px/1.45 "Segoe UI", sans-serif;
   color-scheme: dark;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .popup {
@@ -263,6 +265,12 @@ body {
   color: rgba(252, 165, 165, 0.9);
   display: flex;
   gap: 4px;
+}
+
+.popup__readiness-row[data-variant="notice"] {
+  border-color: rgba(125, 211, 252, 0.2);
+  background: rgba(14, 165, 233, 0.07);
+  color: rgba(186, 230, 253, 0.92);
 }
 
 .popup__readiness-row[hidden] {
