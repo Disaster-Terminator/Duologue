@@ -24,7 +24,9 @@ pnpm run check
 | --- | --- | --- | --- |
 | `pnpm run gate:commit` | 快速代码门，目前是 TypeScript 类型检查 | 已安装依赖 | 否，本地 hook |
 | `pnpm run gate:local` / `pnpm run check` | 本地确定性质量门 | 已安装依赖 | 等价拆分执行 |
+| `pnpm run gate:browser` | 确定性质量门加本地 fixture 浏览器 e2e | Playwright Chromium 或本机 Edge/Chrome | 否 |
 | `pnpm run check:generated` | 构建并校验 `dist/extension` | 已安装依赖 | 是 |
+| `pnpm run test:fixture-e2e` | 在本地 ChatGPT fixture 上运行真实扩展的双页、多轮、暂停/恢复 e2e | Playwright Chromium 或本机 Edge/Chrome | 否 |
 | `pnpm run test:cloak-smoke` | 验证 CloakBrowser 登录态、扩展加载、页面可控 | 已人工执行 `auth:bootstrap-cloak` | 否 |
 | `pnpm run test:e2e -- --root-only --scenario happy-path` | CloakBrowser happy-path 业务 e2e | 设置 `CHATGPT_BROWSER_CARRIER=cloakbrowser` 和同一持久 profile | 否 |
 | `pnpm run test:smoke` | Playwright 持久 profile 基础 smoke | 已人工执行 `auth:bootstrap-profile` | 否 |
@@ -33,6 +35,28 @@ pnpm run check
 | `pnpm run test:real-hop` / `pnpm run test:semi` | 更接近真实业务的手动/半自动通道 | 先让对应 smoke 通过 | 否 |
 
 CI 只跑可确定复现、不依赖 ChatGPT 登录态和外部风控状态的门控。真实浏览器链路由人工或显式本地命令触发。
+
+## 确定性浏览器 e2e
+
+日常扩展回归优先运行不依赖 OpenAI 登录态的 fixture e2e：
+
+```bash
+pnpm exec playwright install chromium
+pnpm run gate:browser
+```
+
+测试会拦截 `https://chatgpt.com/c/fixture-a` 和 `fixture-b`，返回仓库内的确定性页面，同时加载真实 `dist/extension`。因此 manifest 匹配、content script、service worker、popup、悬浮窗、双页绑定和 relay 状态机都走真实扩展路径；只有 OpenAI 页面实现和模型回复由 fixture 替代。
+
+当前场景自动验证：
+
+- 四轮双向 relay，并以 `max_rounds_reached` 正常停止。
+- 运行中请求暂停，在下一可暂停边界进入 paused，再恢复到完成。
+- popup 与两个页面悬浮窗的 phase 保持同步。
+- 全程不读取或写入 OpenAI cookie、storageState、账号或真实对话。
+
+fixture e2e 优先使用当前 Playwright 版本对应的 Chromium。若本机未安装该浏览器，Windows 下会回退到已安装的 Edge 或 Chrome；环境缺失不应被误报为业务失败。
+
+fixture e2e 不能证明 ChatGPT 当前 DOM 与选择器仍兼容。真实 ChatGPT 验收应缩减为薄兼容检查：复用用户已登录 profile，确认扩展注入、composer、发送、回复读取和一次短 relay。登录、Cloudflare 或 CAPTCHA 仍属于外部环境，不作为核心业务回归门。
 
 ## 调试日志
 

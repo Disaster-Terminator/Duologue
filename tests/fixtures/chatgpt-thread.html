@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Duologue ChatGPT Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        color: #202123;
+        background: #ffffff;
+        font-family: Arial, sans-serif;
+      }
+
+      main {
+        width: min(760px, calc(100% - 40px));
+        margin: 32px auto 120px;
+      }
+
+      article {
+        padding: 12px 0;
+        border-bottom: 1px solid #e5e7eb;
+        white-space: pre-wrap;
+      }
+
+      form {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        left: 20px;
+        display: flex;
+        gap: 8px;
+        padding: 12px;
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+      }
+
+      textarea {
+        min-height: 56px;
+        flex: 1;
+      }
+
+      button {
+        min-width: 88px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="fixture-title">Duologue fixture</h1>
+      <section id="messages" aria-live="polite"></section>
+    </main>
+
+    <form id="composer-form">
+      <textarea aria-label="Message" role="textbox"></textarea>
+      <button id="composer-submit-button" type="submit" aria-label="Send">Send</button>
+      <button data-testid="stop-button" type="button" aria-label="Stop generating" hidden>
+        Stop
+      </button>
+    </form>
+
+    <script>
+      (() => {
+        const fixtureRole = location.pathname.endsWith("fixture-b") ? "B" : "A";
+        const messages = document.querySelector("#messages");
+        const form = document.querySelector("#composer-form");
+        const composer = form.querySelector("textarea");
+        const sendButton = form.querySelector("#composer-submit-button");
+        const stopButton = form.querySelector('[data-testid="stop-button"]');
+        const state = {
+          fixtureRole,
+          acceptedMessages: 0,
+          generatedReplies: 0,
+          generating: false,
+          replyDelayMs: 180
+        };
+
+        document.title = `Duologue fixture ${fixtureRole}`;
+        document.querySelector("#fixture-title").textContent = `Fixture thread ${fixtureRole}`;
+        window.__DUOLOGUE_FIXTURE__ = state;
+
+        function appendMessage(role, text) {
+          const turn = document.createElement("article");
+          turn.setAttribute("data-testid", `conversation-turn-${messages.children.length + 1}`);
+
+          const message = document.createElement("div");
+          message.setAttribute("data-message-author-role", role);
+          message.textContent = text;
+          turn.append(message);
+          messages.append(turn);
+        }
+
+        function setGenerating(generating) {
+          state.generating = generating;
+          stopButton.hidden = !generating;
+          sendButton.disabled = generating;
+        }
+
+        appendMessage(
+          "assistant",
+          `Fixture ${fixtureRole} seed\n\n[BRIDGE_STATE] CONTINUE`
+        );
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const text = composer.value.trim();
+          if (!text || state.generating) return;
+
+          state.acceptedMessages += 1;
+          appendMessage("user", text);
+          composer.value = "";
+          composer.dispatchEvent(new Event("input", { bubbles: true }));
+          setGenerating(true);
+
+          const replyNumber = state.acceptedMessages;
+          window.setTimeout(() => {
+            state.generatedReplies += 1;
+            appendMessage(
+              "assistant",
+              `Fixture ${fixtureRole} reply ${replyNumber}\n\n[BRIDGE_STATE] CONTINUE`
+            );
+            setGenerating(false);
+          }, state.replyDelayMs);
+        });
+      })();
+    </script>
+  </body>
+</html>
